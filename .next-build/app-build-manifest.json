@@ -1,0 +1,37 @@
+{
+  "pages": {
+    "/_not-found/page": [
+      "static/chunks/webpack-29957205745576aa.js",
+      "static/chunks/fd9d1056-88c8a1669018f964.js",
+      "static/chunks/117-9776bcfde68b9ed6.js",
+      "static/chunks/main-app-22b37c2908221bc6.js",
+      "static/chunks/app/_not-found/page-7b57af7c004eafad.js"
+    ],
+    "/layout": [
+      "static/chunks/webpack-29957205745576aa.js",
+      "static/chunks/fd9d1056-88c8a1669018f964.js",
+      "static/chunks/117-9776bcfde68b9ed6.js",
+      "static/chunks/main-app-22b37c2908221bc6.js",
+      "static/css/a21b344599a3b732.css",
+      "static/chunks/app/layout-63f582a8eda193e9.js"
+    ],
+    "/page": [
+      "static/chunks/webpack-29957205745576aa.js",
+      "static/chunks/fd9d1056-88c8a1669018f964.js",
+      "static/chunks/117-9776bcfde68b9ed6.js",
+      "static/chunks/main-app-22b37c2908221bc6.js",
+      "static/chunks/44530001-8f53bce17fa5a9e5.js",
+      "static/chunks/10-4cd13c2ac6358b81.js",
+      "static/chunks/app/page-dd742bf3c8bab827.js"
+    ],
+    "/game/local-multiplayer/[gameId]/page": [
+      "static/chunks/webpack-29957205745576aa.js",
+      "static/chunks/fd9d1056-88c8a1669018f964.js",
+      "static/chunks/117-9776bcfde68b9ed6.js",
+      "static/chunks/main-app-22b37c2908221bc6.js",
+      "static/chunks/44530001-8f53bce17fa5a9e5.js",
+      "static/chunks/10-4cd13c2ac6358b81.js",
+      "static/chunks/app/game/local-multiplayer/[gameId]/page-5b627faecedee0a5.js"
+    ]
+  }
+}

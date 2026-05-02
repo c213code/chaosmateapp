@@ -170,10 +170,10 @@ export default function ClassicVsAI({
     setShowResult(false);
     setReviewMode(false);
     setReviewPly(null);
+    setGameId("local-classic");
     setMessage("Your move. You play White.");
 
     if (!supabase) {
-      setGameId("local-classic");
       return;
     }
 
@@ -199,7 +199,6 @@ export default function ClassicVsAI({
 
     if (error) {
       setMessage(isForeignKeyError(error) ? "Database profile is not ready, so this game is running locally." : error.message);
-      setGameId("local-classic");
       return;
     }
 
@@ -376,6 +375,10 @@ export default function ClassicVsAI({
     setReviewPly(nextPly === null ? null : Math.min(Math.max(nextPly, 0), history.length));
   }
 
+  function currentReviewPly() {
+    return reviewPly ?? history.length;
+  }
+
   return (
     <section className="grid gap-5 xl:grid-cols-[minmax(320px,680px)_320px]">
       <div className="space-y-4">
@@ -534,10 +537,11 @@ export default function ClassicVsAI({
               <p className="font-sans text-white/45">Start a game to see moves.</p>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-3 border-t border-white/10 p-4">
-            <button onClick={() => jumpHistory(0)} disabled={!history.length} className="rounded-full border border-white/15 bg-white/8 px-4 py-3 font-black text-white/80 disabled:opacity-35">↞</button>
-            <button onClick={() => jumpHistory((reviewPly ?? history.length) - 1)} disabled={!history.length || reviewPly === 0} className="rounded-full border border-white/15 bg-white/8 px-4 py-3 font-black text-white/80 disabled:opacity-35">◀</button>
-            <button onClick={() => (reviewPly === null || reviewPly >= history.length - 1 ? jumpHistory(null) : jumpHistory(reviewPly + 1))} disabled={!history.length} className="rounded-full border border-white/15 bg-white/8 px-4 py-3 font-black text-white/80 disabled:opacity-35">▶</button>
+          <div className="grid grid-cols-4 gap-2 border-t border-white/10 p-4">
+            <button onClick={() => jumpHistory(0)} disabled={!history.length || currentReviewPly() === 0} className="rounded-full border border-white/15 bg-white/8 px-3 py-3 text-xs font-black uppercase tracking-[0.12em] text-white/80 disabled:opacity-35">Start</button>
+            <button onClick={() => jumpHistory(currentReviewPly() - 1)} disabled={!history.length || currentReviewPly() === 0} className="rounded-full border border-white/15 bg-white/8 px-3 py-3 text-xs font-black uppercase tracking-[0.12em] text-white/80 disabled:opacity-35">Prev</button>
+            <button onClick={() => (currentReviewPly() >= history.length - 1 ? jumpHistory(null) : jumpHistory(currentReviewPly() + 1))} disabled={!history.length || reviewPly === null} className="rounded-full border border-white/15 bg-white/8 px-3 py-3 text-xs font-black uppercase tracking-[0.12em] text-white/80 disabled:opacity-35">Next</button>
+            <button onClick={() => jumpHistory(null)} disabled={!history.length || reviewPly === null} className="rounded-full border border-white/15 bg-white/8 px-3 py-3 text-xs font-black uppercase tracking-[0.12em] text-white/80 disabled:opacity-35">Live</button>
           </div>
         </div>
 

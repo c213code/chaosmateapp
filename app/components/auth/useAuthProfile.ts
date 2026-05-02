@@ -85,6 +85,7 @@ export function useAuthProfile() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileReady, setProfileReady] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -95,14 +96,18 @@ export function useAuthProfile() {
       }
 
       setUser(nextUser);
-      setProfile(nextUser ? fallbackProfile(nextUser) : null);
+      setProfile(null);
+      setProfileReady(false);
       setLoading(false);
 
       if (nextUser) {
         const loadedProfile = (await loadProfile(nextUser.id)) || (await ensureProfile(nextUser));
         if (alive) {
           setProfile(loadedProfile);
+          setProfileReady(true);
         }
+      } else if (alive) {
+        setProfileReady(true);
       }
     }
 
@@ -121,6 +126,7 @@ export function useAuthProfile() {
         console.error("Auth check failed:", error);
         if (alive) {
           setLoading(false);
+          setProfileReady(true);
         }
       }
     }
@@ -152,5 +158,5 @@ export function useAuthProfile() {
     };
   }, []);
 
-  return { user, profile, setProfile, loading };
+  return { user, profile, setProfile, loading, profileReady };
 }

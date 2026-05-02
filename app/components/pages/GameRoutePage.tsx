@@ -7,7 +7,7 @@ import VariantChessGame from "@/app/components/game/VariantChessGame";
 import type { GameMode } from "@/app/lib/chess-platform";
 
 export default function GameRoutePage({ mode }: { mode: GameMode }) {
-  const { user, profile, setProfile, loading } = useAuthProfile();
+  const { user, profile, setProfile, loading, profileReady } = useAuthProfile();
 
   if (loading) {
     return (
@@ -24,10 +24,17 @@ export default function GameRoutePage({ mode }: { mode: GameMode }) {
     return <AuthPage />;
   }
 
-  if (!profile) {
+  if (!profile || !profileReady) {
     return (
       <main className="cm-page grid min-h-screen place-items-center text-white">
-        <p>Loading profile...</p>
+        <div className="cm-panel w-full max-w-sm p-6">
+          <div className="h-5 w-36 animate-pulse rounded bg-white/10" />
+          <div className="mt-4 h-10 w-52 animate-pulse rounded bg-white/10" />
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="h-16 animate-pulse rounded-xl bg-white/10" />
+            <div className="h-16 animate-pulse rounded-xl bg-white/10" />
+          </div>
+        </div>
       </main>
     );
   }

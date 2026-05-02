@@ -62,16 +62,19 @@ const proPlans = [
 ];
 
 export default function GameRouteUtilityPage({ view }: { view: "profile" | "leaderboard" | "shop" }) {
-  const { user, profile, setProfile, loading } = useAuthProfile();
+  const { user, profile, setProfile, loading, profileReady } = useAuthProfile();
   const [cityFilter, setCityFilter] = useState("All cities");
   const [liveLeaderboard, setLiveLeaderboard] = useState<LeaderboardRow[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(view === "leaderboard");
   const [shopMessage, setShopMessage] = useState("");
   const [inventory, setInventory] = useState<InventoryState | null>(null);
   const [gameHistory, setGameHistory] = useState<GameHistoryRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(view === "profile");
   const [coachText, setCoachText] = useState("");
 
   useEffect(() => {
     if (view !== "leaderboard" || !supabase) {
+      setLeaderboardLoading(false);
       return;
     }
 
@@ -79,12 +82,16 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
     let alive = true;
 
     async function loadLeaderboard() {
+      setLeaderboardLoading(true);
       const { data } = await client
         .from("users")
         .select("username,city,elo,wins,losses,coins")
         .limit(100);
 
       if (!alive || !data) {
+        if (alive) {
+          setLeaderboardLoading(false);
+        }
         return;
       }
 
@@ -100,6 +107,7 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
           }))
           .sort((a, b) => b.classic - a.classic),
       );
+      setLeaderboardLoading(false);
     }
 
     loadLeaderboard();
@@ -111,6 +119,7 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
 
   useEffect(() => {
     if (view !== "profile" || !profile || !supabase) {
+      setHistoryLoading(false);
       return;
     }
 
@@ -118,6 +127,7 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
     let alive = true;
 
     async function loadHistory() {
+      setHistoryLoading(true);
       const { data } = await client
         .from("games")
         .select("id,mode,result,moves_san,moves_pgn,started_at,ended_at")
@@ -126,6 +136,9 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
 
       if (alive && data) {
         setGameHistory(data as GameHistoryRow[]);
+      }
+      if (alive) {
+        setHistoryLoading(false);
       }
     }
 
@@ -137,12 +150,12 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
   }, [profile, view]);
 
   const leaderboardRows = useMemo(() => {
-    const rows = liveLeaderboard.length
+    const rows = liveLeaderboard.length || !leaderboardLoading
       ? liveLeaderboard
       : leaderboard.map((player) => ({ username: player.username, city: player.city, classic: player.classic, wins: 0, losses: 0, coins: 0 }));
 
     return cityFilter === "All cities" ? rows : rows.filter((player) => player.city === cityFilter);
-  }, [cityFilter, liveLeaderboard]);
+  }, [cityFilter, leaderboardLoading, liveLeaderboard]);
 
   useEffect(() => {
     if (!profile || view !== "shop") {
@@ -226,8 +239,8 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
     return <AuthPage />;
   }
 
-  if (!profile) {
-    return <main className="cm-page grid min-h-screen place-items-center text-white">Loading profile...</main>;
+  if (!profile || !profileReady) {
+    return <UtilitySkeleton />;
   }
 
   return (
@@ -282,7 +295,9 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                 <a href="/game/classic" className="cm-button px-4 py-2 text-sm font-black">Play new game</a>
               </div>
               <div className="mt-5 grid gap-3">
-                {gameHistory.map((game) => (
+                {historyLoading ? (
+                  <HistorySkeleton />
+                ) : gameHistory.length ? gameHistory.map((game) => (
                   <div key={game.id} className="grid gap-3 rounded-xl border border-white/10 bg-white/8 p-4 md:grid-cols-[1fr_120px_150px] md:items-center">
                     <div>
                       <p className="font-black">{game.mode.replace(/_/g, " ").toUpperCase()}</p>
@@ -293,8 +308,9 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                       Analyze with AI Coach
                     </button>
                   </div>
-                ))}
-                {!gameHistory.length && <p className="rounded-xl border border-white/10 bg-white/8 p-4 text-white/55">No saved games yet.</p>}
+                )) : (
+                  <p className="rounded-xl border border-white/10 bg-white/8 p-4 text-white/55">No saved games yet.</p>
+                )}
               </div>
               {coachText && <div className="mt-5 rounded-xl border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm leading-6 text-cyan-50">{coachText}</div>}
             </div>
@@ -316,7 +332,9 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
               </select>
             </div>
             <div className="mt-6 space-y-3">
-              {leaderboardRows.map((player, index) => (
+              {leaderboardLoading ? (
+                <LeaderboardSkeleton />
+              ) : leaderboardRows.map((player, index) => (
                 <div key={`${player.username}-${player.city}`} className="grid grid-cols-[42px_1fr_96px_90px] items-center rounded-md border border-white/10 bg-white/8 px-4 py-3">
                   <span className="text-xl font-black text-[#d4af37]">{index < 3 ? "♛" : index + 1}</span>
                   <span>
@@ -327,7 +345,7 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                   <span className="text-right font-black">{player.classic}</span>
                 </div>
               ))}
-              {!leaderboardRows.length && <p className="rounded-md border border-white/10 bg-white/8 p-4 text-white/55">No players in this city yet.</p>}
+              {!leaderboardLoading && !leaderboardRows.length && <p className="rounded-md border border-white/10 bg-white/8 p-4 text-white/55">No players in this city yet.</p>}
             </div>
           </section>
         )}
@@ -607,6 +625,79 @@ function ShopMetric({ label, value }: { label: string; value: number | string })
       <p className="text-xs uppercase tracking-[0.16em] text-white/38">{label}</p>
       <p className="mt-1 text-xl font-black text-white">{value}</p>
     </div>
+  );
+}
+
+function UtilitySkeleton() {
+  return (
+    <main className="cm-page min-h-screen p-4 text-white">
+      <div className="mx-auto max-w-6xl">
+        <div className="cm-panel mb-8 flex items-center justify-between p-4">
+          <div className="h-5 w-36 animate-pulse rounded bg-white/10" />
+          <div className="flex gap-2">
+            <div className="h-9 w-20 animate-pulse rounded bg-white/10" />
+            <div className="h-9 w-24 animate-pulse rounded bg-white/10" />
+            <div className="h-9 w-16 animate-pulse rounded bg-white/10" />
+          </div>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="cm-panel p-6">
+            <div className="h-24 w-24 animate-pulse rounded-2xl bg-white/10" />
+            <div className="mt-5 h-8 w-44 animate-pulse rounded bg-white/10" />
+            <div className="mt-3 h-4 w-24 animate-pulse rounded bg-white/10" />
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              <div className="h-16 animate-pulse rounded bg-white/10" />
+              <div className="h-16 animate-pulse rounded bg-white/10" />
+              <div className="h-16 animate-pulse rounded bg-white/10" />
+            </div>
+          </div>
+          <div className="cm-panel p-6">
+            <div className="h-6 w-32 animate-pulse rounded bg-white/10" />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="h-20 animate-pulse rounded bg-white/10" />
+              <div className="h-20 animate-pulse rounded bg-white/10" />
+              <div className="h-20 animate-pulse rounded bg-white/10" />
+              <div className="h-20 animate-pulse rounded bg-white/10" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function HistorySkeleton() {
+  return (
+    <>
+      {[0, 1, 2].map((item) => (
+        <div key={item} className="grid gap-3 rounded-xl border border-white/10 bg-white/8 p-4 md:grid-cols-[1fr_120px_150px] md:items-center">
+          <div>
+            <div className="h-5 w-36 animate-pulse rounded bg-white/10" />
+            <div className="mt-2 h-3 w-64 animate-pulse rounded bg-white/10" />
+          </div>
+          <div className="h-9 animate-pulse rounded bg-white/10" />
+          <div className="h-9 animate-pulse rounded bg-white/10" />
+        </div>
+      ))}
+    </>
+  );
+}
+
+function LeaderboardSkeleton() {
+  return (
+    <>
+      {[0, 1, 2, 3, 4].map((item) => (
+        <div key={item} className="grid grid-cols-[42px_1fr_96px_90px] items-center rounded-md border border-white/10 bg-white/8 px-4 py-3">
+          <div className="h-7 w-7 animate-pulse rounded bg-white/10" />
+          <div>
+            <div className="h-4 w-40 animate-pulse rounded bg-white/10" />
+            <div className="mt-2 h-3 w-28 animate-pulse rounded bg-white/10" />
+          </div>
+          <div className="h-4 animate-pulse rounded bg-white/10" />
+          <div className="h-5 animate-pulse rounded bg-white/10" />
+        </div>
+      ))}
+    </>
   );
 }
 

@@ -316,6 +316,7 @@ export default function VariantChessGame({
     setTeamSeat("white-major");
     setWhiteMs(speedPreset === "bullet" ? 30000 : 180000);
     setBlackMs(speedPreset === "bullet" ? 30000 : 180000);
+    setGameId(`local-${mode}`);
     setMessage(`${modeCopy[mode].title} started. ${aiOpponent ? "You play White, AI replies automatically." : "White to move."}`);
 
     if (onlineRoomId) {
@@ -357,7 +358,6 @@ export default function VariantChessGame({
     }
 
     if (!supabase) {
-      setGameId(`local-${mode}`);
       return;
     }
 
@@ -379,7 +379,6 @@ export default function VariantChessGame({
 
     if (error) {
       setMessage(isForeignKeyError(error) ? "Database profile is not ready, so this game is running locally." : error.message);
-      setGameId(`local-${mode}`);
       return;
     }
 

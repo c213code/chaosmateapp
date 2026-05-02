@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAuthProfile } from "@/app/components/auth/useAuthProfile";
 import AuthPage from "@/app/components/pages/AuthPage";
 import ClassicVsAI from "@/app/components/game/ClassicVsAI";
@@ -8,6 +9,11 @@ import type { GameMode } from "@/app/lib/chess-platform";
 
 export default function GameRoutePage({ mode }: { mode: GameMode }) {
   const { user, profile, setProfile, loading } = useAuthProfile();
+  const [forceLocal, setForceLocal] = useState(false);
+
+  useEffect(() => {
+    setForceLocal(new URLSearchParams(window.location.search).get("play") === "local");
+  }, []);
 
   if (loading) {
     return (
@@ -56,9 +62,15 @@ export default function GameRoutePage({ mode }: { mode: GameMode }) {
         {mode === "classic-ai" ? (
           <ClassicVsAI user={user} profile={profile} setProfile={setProfile} />
         ) : mode === "online" ? (
-          <VariantChessGame mode="local" user={user} profile={profile} setProfile={setProfile} />
+          <VariantChessGame mode="local" user={user} profile={profile} setProfile={setProfile} aiOpponent={false} />
         ) : (
-          <VariantChessGame mode={mode} user={user} profile={profile} setProfile={setProfile} />
+          <VariantChessGame
+            mode={mode}
+            user={user}
+            profile={profile}
+            setProfile={setProfile}
+            aiOpponent={!forceLocal && mode !== "local" && mode !== "team"}
+          />
         )}
       </div>
     </main>

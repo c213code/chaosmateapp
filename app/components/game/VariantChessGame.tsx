@@ -51,12 +51,14 @@ export default function VariantChessGame({
   profile,
   setProfile,
   onlineRoomId,
+  aiOpponent = false,
 }: {
   mode: Exclude<GameMode, "classic-ai" | "online">;
   user: ChaosMateUser;
   profile: Profile;
   setProfile: (profile: Profile | null) => void;
   onlineRoomId?: string;
+  aiOpponent?: boolean;
 }) {
   const [fen, setFen] = useState(START_FEN);
   const [history, setHistory] = useState<Move[]>([]);
@@ -77,8 +79,10 @@ export default function VariantChessGame({
   const [whiteMs, setWhiteMs] = useState(180000);
   const [blackMs, setBlackMs] = useState(180000);
   const [teamSeat, setTeamSeat] = useState<TeamSeat>("white-major");
+  const [aiThinking, setAiThinking] = useState(false);
   const finalizedRef = useRef(false);
   const timerStartedRef = useRef(false);
+  const aiFenRef = useRef<string | null>(null);
 
   const game = useMemo(() => new Chess(fen), [fen]);
   const turn = game.turn();
@@ -86,7 +90,10 @@ export default function VariantChessGame({
   const lastMove = history.at(-1);
   const queenThreat = getQueenThreat(game, turn);
   const hiddenSquares = mode === "fog" ? getHiddenSquares(game, turn) : [];
-  const movableSquares = result ? [] : getMovableSquares(game, turn).filter((square) => canMoveSquare(game, square, mode, teamSeat));
+  const playerColor = mode === "switch" ? switchControl : "w";
+  const isPlayerTurn = !aiOpponent || turn === playerColor;
+  const movableSquares =
+    result || aiThinking || !isPlayerTurn ? [] : getMovableSquares(game, turn).filter((square) => canMoveSquare(game, square, mode, teamSeat));
   const gameStatus = result ? "finished" : game.isCheck() ? "check" : gameId ? "playing" : "idle";
 
   useEffect(() => {
@@ -170,6 +177,38 @@ export default function VariantChessGame({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [whiteMs, blackMs, mode, result]);
 
+  useEffect(() => {
+    if (!aiOpponent || !gameId || result || promotion || switching || aiThinking || game.turn() === playerColor || game.isGameOver()) {
+      return;
+    }
+
+    const requestedFen = game.fen();
+    aiFenRef.current = requestedFen;
+    setAiThinking(true);
+    setMessage("AI is thinking...");
+
+    const timeout = window.setTimeout(() => {
+      if (aiFenRef.current !== requestedFen || finalizedRef.current) {
+        setAiThinking(false);
+        return;
+      }
+
+      const aiGame = new Chess(requestedFen);
+      const move = chooseAiMove(aiGame);
+
+      if (!move) {
+        setAiThinking(false);
+        return;
+      }
+
+      playMove(move.from, move.to, (move.promotion || "q") as PieceSymbol, true);
+      setAiThinking(false);
+    }, 520);
+
+    return () => window.clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiOpponent, fen, gameId, result, promotion, switching, aiThinking, playerColor]);
+
   async function startGame() {
     const next = new Chess();
     finalizedRef.current = false;
@@ -180,6 +219,8 @@ export default function VariantChessGame({
     setPromotion(null);
     setResult(null);
     setShowResult(false);
+    setAiThinking(false);
+    aiFenRef.current = null;
     setOrientation("w");
     setSwitchAt(nextSwitchMove(0));
     setSwitching(0);
@@ -190,7 +231,7 @@ export default function VariantChessGame({
     setTeamSeat("white-major");
     setWhiteMs(speedPreset === "bullet" ? 30000 : 180000);
     setBlackMs(speedPreset === "bullet" ? 30000 : 180000);
-    setMessage(`${modeCopy[mode].title} started. White to move.`);
+    setMessage(`${modeCopy[mode].title} started. ${aiOpponent ? "You play White, AI replies automatically." : "White to move."}`);
 
     if (onlineRoomId) {
       setGameId(`online-${onlineRoomId}`);
@@ -229,7 +270,7 @@ export default function VariantChessGame({
   }
 
   function handleSquare(square: Square) {
-    if (!gameId || result || switching) {
+    if (!gameId || result || switching || aiThinking || !isPlayerTurn) {
       return;
     }
 
@@ -259,9 +300,9 @@ export default function VariantChessGame({
     setSelected(piece?.color === turn && canMoveSquare(game, square, mode, teamSeat) ? square : null);
   }
 
-  function playMove(from: Square, to: Square, promotionPiece: PieceSymbol = "q") {
+  function playMove(from: Square, to: Square, promotionPiece: PieceSymbol = "q", fromAI = false) {
     const piece = game.get(from);
-    if (!piece || !canMoveSquare(game, from, mode, teamSeat)) {
+    if (!piece || (!fromAI && (aiOpponent && !isPlayerTurn)) || (!fromAI && !canMoveSquare(game, from, mode, teamSeat))) {
       setSelected(null);
       return false;
     }
@@ -288,7 +329,7 @@ export default function VariantChessGame({
         setChaosHistory((current) => [...current, { moveNumber: nextHistory.length, from: event.from, to: event.to, piece: event.piece }]);
         window.setTimeout(() => setChaosEvent(null), 1200);
         nextFen = nextGame.fen();
-        nextMessage = `Chaos strike: ${pieceName(event.piece)} teleported ${event.from} -> ${event.to}.`;
+        nextMessage = `Chaos strike: ${pieceName(event.piece)} teleported ${event.from} to ${event.to}.`;
       }
     }
 
@@ -321,6 +362,14 @@ export default function VariantChessGame({
       const suggestedSeat = nextSeat(nextGame.turn());
       setTeamSeat(suggestedSeat);
       nextMessage = `${nextGame.turn() === "w" ? "White" : "Black"} to move. Pick Player A or B, then move only that seat's pieces.`;
+    }
+
+    if (aiOpponent && !nextGame.isGameOver()) {
+      const nextPlayerColor = mode === "switch" && triggeredSwitch ? (switchControl === "w" ? "b" : "w") : playerColor;
+      nextMessage =
+        nextGame.turn() === nextPlayerColor
+          ? `Your turn as ${nextPlayerColor === "w" ? "White" : "Black"}.`
+          : `AI to move as ${nextGame.turn() === "w" ? "White" : "Black"}.`;
     }
 
     if (nextGame.isCheck()) {
@@ -388,6 +437,7 @@ export default function VariantChessGame({
     }
 
     finalizedRef.current = true;
+    aiFenRef.current = null;
     setResult(outcome);
     setShowResult(true);
     setSelected(null);
@@ -447,6 +497,7 @@ export default function VariantChessGame({
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#d4af37]">{copy.title}</p>
               <h1 className="mt-1 text-2xl font-black text-white">{copy.subtitle}</h1>
+              {aiOpponent && <p className="mt-2 text-sm font-bold text-[#86efac]">AI opponent active</p>}
             </div>
             <div className="flex flex-wrap gap-2">
               {mode === "speed" && (
@@ -542,6 +593,8 @@ export default function VariantChessGame({
           <div className="mt-4 grid grid-cols-2 gap-3">
             <State label="Turn" value={turn === "w" ? "White" : "Black"} />
             <State label="Moves" value={history.length} />
+            {aiOpponent && <State label="Opponent" value={aiThinking ? "AI thinking" : "AI ready"} />}
+            {aiOpponent && <State label="You control" value={playerColor === "w" ? "White" : "Black"} />}
             {mode === "switch" && <State label="Next swap" value={`${Math.max(0, switchAt - history.length)} moves`} />}
             {mode === "switch" && <State label="Control" value={switchControl === "w" ? "White" : "Black"} />}
             {mode === "switch" && <State label="Swaps" value={totalSwaps} />}
@@ -557,6 +610,7 @@ export default function VariantChessGame({
           </div>
           <p className="mt-4 rounded-md border border-white/10 bg-black/20 p-3 text-sm leading-6 text-white/70">{message}</p>
           {!selected && movableSquares.length > 0 && <p className="mt-3 text-xs leading-5 text-white/50">Подсвеченные фигуры могут ходить. Нажми на фигуру, потом на зеленую клетку.</p>}
+          {aiOpponent && !isPlayerTurn && !result && <p className="mt-3 text-xs leading-5 text-[#86efac]">Сейчас ход AI. Доска заблокирована до ответа.</p>}
           {queenThreat && <p className="mt-3 rounded-md border border-amber-300/35 bg-amber-300/12 p-3 text-sm text-amber-100">Queen threat: {queenThreat.attackers.join(", ")} attacking {queenThreat.queenSquare}.</p>}
           <div className="mt-4 grid grid-cols-2 gap-3">
             <button onClick={() => finalizeGame("draw")} disabled={!gameId || Boolean(result)} className="rounded-md border border-[#d4af37]/45 px-3 py-2 font-bold text-[#f7d96b] disabled:opacity-40">
@@ -632,6 +686,39 @@ function canMoveSquare(game: Chess, square: Square, mode: GameMode, teamSeat: Te
   }
 
   return isControlledBySeat(piece.type, piece.color, teamSeat);
+}
+
+function chooseAiMove(game: Chess) {
+  const moves = game.moves({ verbose: true });
+
+  if (!moves.length) {
+    return null;
+  }
+
+  const mates = moves.filter((move) => {
+    const copy = new Chess(game.fen());
+    copy.move({ from: move.from, to: move.to, promotion: move.promotion || "q" });
+    return copy.isCheckmate();
+  });
+
+  if (mates.length) {
+    return mates[Math.floor(Math.random() * mates.length)];
+  }
+
+  const checks = moves.filter((move) => {
+    const copy = new Chess(game.fen());
+    copy.move({ from: move.from, to: move.to, promotion: move.promotion || "q" });
+    return copy.isCheck();
+  });
+
+  const captures = moves.filter((move) => move.captured);
+  const tactical = [...checks, ...captures];
+
+  if (tactical.length && Math.random() < 0.72) {
+    return tactical[Math.floor(Math.random() * tactical.length)];
+  }
+
+  return moves[Math.floor(Math.random() * moves.length)];
 }
 
 function getHiddenSquares(game: Chess, color: Color) {

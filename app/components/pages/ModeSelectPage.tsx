@@ -13,11 +13,11 @@ const aiModes = [
 
 const localModes = [
   ["Classic", "/game/local-multiplayer"],
-  ["Switch Places", "/game/switch-places"],
+  ["Switch Places", "/game/switch-places?play=local"],
   ["2v2 Team", "/game/2v2"],
-  ["Fog of War", "/game/fog-of-war"],
-  ["Chaos Mode", "/game/chaos-mode"],
-  ["Speed Chess", "/game/speed-chess"],
+  ["Fog of War", "/game/fog-of-war?play=local"],
+  ["Chaos Mode", "/game/chaos-mode?play=local"],
+  ["Speed Chess", "/game/speed-chess?play=local"],
 ];
 
 export default function ModeSelectPage() {

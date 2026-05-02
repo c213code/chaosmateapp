@@ -343,16 +343,22 @@ export default function VariantChessGame({
       const nextChaosCountdown = chaosCountdown - 1;
 
       if (nextChaosCountdown <= 0) {
-        const opponent = nextGame.turn();
-        const event = teleportOpponentPiece(nextGame, opponent);
+        const events = (["w", "b"] as Color[])
+          .map((color) => teleportOpponentPiece(nextGame, color))
+          .filter((event): event is NonNullable<typeof event> => Boolean(event));
         setChaosCountdown(6);
 
-        if (event) {
-          setChaosEvent(event);
-          setChaosHistory((current) => [...current, { moveNumber: nextHistory.length, from: event.from, to: event.to, piece: event.piece }]);
+        if (events.length) {
+          setChaosEvent(events[0]);
+          setChaosHistory((current) => [
+            ...current,
+            ...events.map((event) => ({ moveNumber: nextHistory.length, from: event.from, to: event.to, piece: event.piece })),
+          ]);
           window.setTimeout(() => setChaosEvent(null), 1200);
           nextFen = nextGame.fen();
-          nextMessage = `Chaos strike: ${pieceName(event.piece)} teleported ${event.from} to ${event.to}.`;
+          nextMessage = `Chaos strike: ${events
+            .map((event) => `${event.color === "w" ? "White" : "Black"} ${pieceName(event.piece)} ${event.from} to ${event.to}`)
+            .join("; ")}.`;
         } else {
           nextMessage = "Chaos tried to strike, but no non-king target was available.";
         }

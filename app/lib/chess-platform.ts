@@ -247,6 +247,7 @@ export function teleportOpponentPiece(game: Chess, opponent: Color) {
     from: piece.square,
     to: target,
     piece: piece.type,
+    color: piece.color,
   };
 }
 

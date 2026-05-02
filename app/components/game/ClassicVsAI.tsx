@@ -59,7 +59,7 @@ export default function ClassicVsAI({
   const aiRequestFenRef = useRef<string | null>(null);
 
   const game = useMemo(() => new Chess(fen), [fen]);
-  const boardGame = useMemo(() => replayGame(history, reviewPly), [history, reviewPly]);
+  const boardGame = useMemo(() => getBoardGame(fen, history, reviewPly), [fen, history, reviewPly]);
   const legalTargets = selected ? game.moves({ square: selected, verbose: true }).map((move) => move.to) : [];
   const movableSquares = gameId && !aiThinking && !result && game.turn() === "w" ? getMovableSquares(game, "w") : [];
   const lastMove = history.at(-1);
@@ -597,15 +597,29 @@ export default function ClassicVsAI({
   );
 }
 
-function replayGame(history: Move[], ply: number | null) {
+function getBoardGame(liveFen: string, history: Move[], ply: number | null) {
   if (ply === null) {
-    const live = new Chess();
-    history.forEach((move) => replayMove(live, move));
-    return live;
+    return new Chess(liveFen);
+  }
+
+  if (ply <= 0) {
+    return new Chess();
+  }
+
+  const move = history[ply - 1] as Move & { after?: string };
+  if (move?.after) {
+    return new Chess(move.after);
   }
 
   const review = new Chess();
-  history.slice(0, ply).forEach((move) => replayMove(review, move));
+  for (const item of history.slice(0, ply)) {
+    try {
+      replayMove(review, item);
+    } catch {
+      return new Chess(liveFen);
+    }
+  }
+
   return review;
 }
 

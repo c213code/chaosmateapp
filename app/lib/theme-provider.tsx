@@ -21,13 +21,17 @@ function applyDocumentTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window === "undefined") {
+      return "dark";
+    }
+
+    const saved = (window.localStorage.getItem("chaosmate-theme") || window.localStorage.getItem("theme")) as Theme | null;
+    return saved === "light" || saved === "dark" ? saved : "dark";
+  });
 
   useEffect(() => {
-    const saved = (window.localStorage.getItem("chaosmate-theme") || window.localStorage.getItem("theme")) as Theme | null;
-    const nextTheme = saved === "light" || saved === "dark" ? saved : "dark";
-    setThemeState(nextTheme);
-    applyDocumentTheme(nextTheme);
+    applyDocumentTheme(theme);
 
     const syncInventoryTheme = (event: Event) => {
       const next = (event as CustomEvent<{ theme?: Theme }>).detail?.theme;
@@ -40,7 +44,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener("chaosmate-inventory-change", syncInventoryTheme);
     return () => window.removeEventListener("chaosmate-inventory-change", syncInventoryTheme);
-  }, []);
+  }, [theme]);
 
   const value = useMemo(
     () => ({

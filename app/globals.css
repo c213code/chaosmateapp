@@ -653,6 +653,20 @@ button:hover .piece-token .piece {
   background: rgba(255, 255, 255, 0.82) !important;
 }
 
+.team-board-stage .board-shell {
+  padding: clamp(0.5rem, 1.1vw, 0.85rem);
+}
+
+.team-board-stage .piece-svg {
+  width: 92%;
+  height: 92%;
+}
+
+.team-board-stage .chess-square > span.absolute.h-4 {
+  height: 1.35rem;
+  width: 1.35rem;
+}
+
 .chaos-subscription-panel {
   position: relative;
   overflow: hidden;
@@ -662,6 +676,23 @@ button:hover .piece-token .piece {
     radial-gradient(circle at 12% 8%, rgba(184, 255, 56, 0.18), transparent 34%),
     linear-gradient(135deg, rgba(17, 24, 39, 0.96), rgba(5, 10, 18, 0.95));
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+}
+
+.cm-light .chaos-subscription-panel {
+  border-color: rgba(21, 128, 61, 0.22);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(184, 255, 56, 0.24), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(226, 232, 240, 0.88));
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.16);
+}
+
+.cm-light .chaos-subscription-panel [class*="text-white"] {
+  color: #0f172a !important;
+}
+
+.cm-light .chaos-subscription-panel [class*="text-white/45"],
+.cm-light .chaos-subscription-panel [class*="text-white/58"] {
+  color: rgba(15, 23, 42, 0.62) !important;
 }
 
 .chaos-store-card {

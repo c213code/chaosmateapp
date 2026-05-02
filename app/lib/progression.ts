@@ -33,15 +33,18 @@ export function loadInventory(userId?: string): InventoryState {
     return defaultInventory;
   }
 
+  const savedTheme = window.localStorage.getItem("chaosmate-theme") || window.localStorage.getItem("theme");
+  const globalTheme = savedTheme === "light" || savedTheme === "dark" ? savedTheme : defaultInventory.theme;
   const raw = window.localStorage.getItem(inventoryKey(userId));
   if (!raw) {
-    return defaultInventory;
+    return { ...defaultInventory, theme: globalTheme };
   }
 
   try {
-    return { ...defaultInventory, ...JSON.parse(raw) } as InventoryState;
+    const parsed = JSON.parse(raw) as Partial<InventoryState>;
+    return { ...defaultInventory, ...parsed, theme: parsed.theme || globalTheme } as InventoryState;
   } catch {
-    return defaultInventory;
+    return { ...defaultInventory, theme: globalTheme };
   }
 }
 

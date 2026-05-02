@@ -652,9 +652,10 @@ export default function VariantChessGame({
   }
 
   const copy = modeCopy[mode];
+  const isTeamMode = mode === "team";
 
   return (
-    <section className="grid gap-5 xl:grid-cols-[minmax(320px,760px)_360px]">
+    <section className={`grid gap-5 ${isTeamMode ? "2xl:grid-cols-[minmax(0,900px)_360px]" : "xl:grid-cols-[minmax(320px,760px)_360px]"}`}>
       <div className="space-y-4">
         <div className="cm-panel p-4">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -706,7 +707,7 @@ export default function VariantChessGame({
 
         {mode === "team" && <TeamGuide currentColor={turn} selectedSeat={teamSeat} />}
 
-        <div className={`relative mx-auto ${mode === "team" ? "w-[min(96vw,960px)]" : "w-[min(92vw,760px)]"}`}>
+        <div className={`relative mx-auto ${isTeamMode ? "team-board-stage w-full max-w-[900px]" : "w-[min(92vw,760px)]"}`}>
           {switching > 0 && (
             <div className="absolute inset-0 z-30 grid place-items-center rounded-[28px] bg-black/65 backdrop-blur-md">
               <div className="switch-pulse text-center">

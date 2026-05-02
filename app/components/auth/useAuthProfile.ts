@@ -101,9 +101,13 @@ export function useAuthProfile() {
       setLoading(false);
 
       if (nextUser) {
+        const optimisticProfile = fallbackProfile(nextUser);
+        setProfile(optimisticProfile);
+        setProfileReady(true);
+
         const loadedProfile = (await loadProfile(nextUser.id)) || (await ensureProfile(nextUser));
         if (alive) {
-          setProfile(loadedProfile);
+          setProfile(loadedProfile || optimisticProfile);
           setProfileReady(true);
         }
       } else if (alive) {
@@ -142,7 +146,9 @@ export function useAuthProfile() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      await setUserAndProfile(session?.user || null);
+      window.setTimeout(() => {
+        void setUserAndProfile(session?.user || null);
+      }, 0);
     });
 
     const loadingGuard = window.setTimeout(() => {

@@ -44,20 +44,26 @@ export default function SignupForm() {
       }
 
       if (data.user) {
-        const { error: profileError } = await supabase.from("users").insert({
-          id: data.user.id,
-          email,
-          username,
-          city,
-          elo: { classic: 1200, switch: 1200, fog: 1200, chaos: 1200, team: 1200, speed: 1200 },
-          wins: 0,
-          losses: 0,
-          coins: 0,
-          skin_equipped: "classic",
-        });
+        const { error: profileError } = await supabase
+          .from("users")
+          .upsert(
+            {
+              id: data.user.id,
+              email,
+              username,
+              city,
+              elo: { classic: 1200, switch: 1200, fog: 1200, chaos: 1200, team: 1200, speed: 1200 },
+              wins: 0,
+              losses: 0,
+              coins: 0,
+              skin_equipped: "classic",
+            },
+            { onConflict: "id" },
+          );
 
         if (profileError) {
-          setError(`Failed to create profile: ${profileError.message}`);
+          console.error("Profile creation failed:", profileError);
+          setSuccess(data.session ? "Account created. Profile will sync after login." : "Account created. Confirm email, then log in.");
         } else {
           setSuccess(data.session ? "Account created. Welcome to ChaosMate." : "Account created. Confirm email, then log in.");
         }

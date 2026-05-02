@@ -53,15 +53,19 @@ export default function ClassicVsAI({
   const [result, setResult] = useState<GameOutcome | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
+  const [reviewPly, setReviewPly] = useState<number | null>(null);
   const engineRef = useRef<Worker | null>(null);
   const finalizedRef = useRef(false);
   const aiRequestFenRef = useRef<string | null>(null);
 
   const game = useMemo(() => new Chess(fen), [fen]);
+  const boardGame = useMemo(() => replayGame(history, reviewPly), [history, reviewPly]);
   const legalTargets = selected ? game.moves({ square: selected, verbose: true }).map((move) => move.to) : [];
   const movableSquares = gameId && !aiThinking && !result && game.turn() === "w" ? getMovableSquares(game, "w") : [];
   const lastMove = history.at(-1);
+  const boardLastMove = reviewPly === null ? lastMove : reviewPly > 0 ? history[reviewPly - 1] : null;
   const queenThreat = getQueenThreat(game, "w");
+  const coachReport = useMemo(() => buildCoachReport(history, result), [history, result]);
   const gameStatus = result ? "finished" : game.isCheck() ? "check" : gameId ? "playing" : "idle";
   const capturedByWhite = history
     .filter((move) => move.color === "w" && move.captured)
@@ -165,6 +169,7 @@ export default function ClassicVsAI({
     setResult(null);
     setShowResult(false);
     setReviewMode(false);
+    setReviewPly(null);
     setMessage("Your move. You play White.");
 
     if (!supabase) {
@@ -305,6 +310,7 @@ export default function ClassicVsAI({
     setResult(outcome);
     setShowResult(true);
     setReviewMode(false);
+    setReviewPly(null);
 
     const score = outcome === "white_win" ? 1 : outcome === "draw" ? 0.5 : 0;
     const currentClassic = Number(profile.elo?.classic ?? 1200);
@@ -357,9 +363,17 @@ export default function ClassicVsAI({
   function reviewBoard() {
     setShowResult(false);
     setReviewMode(true);
+    setReviewPly(history.length);
     setSelected(null);
     setPromotion(null);
     setMessage("Review mode: final board is unlocked for inspection.");
+  }
+
+  function jumpHistory(nextPly: number | null) {
+    setSelected(null);
+    setPromotion(null);
+    setReviewMode(nextPly !== null);
+    setReviewPly(nextPly === null ? null : Math.min(Math.max(nextPly, 0), history.length));
   }
 
   return (
@@ -411,41 +425,44 @@ export default function ClassicVsAI({
         )}
 
         <div className="relative">
-          {(aiThinking || promotion) && (
+          {promotion && (
             <div className="absolute inset-0 z-20 grid place-items-center rounded-[28px] bg-black/45 backdrop-blur-md">
-              {promotion ? (
-                <div className="liquid-panel p-5 text-center">
-                  <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#c9a227]">Promote pawn</p>
-                  <div className="mt-4 grid grid-cols-4 gap-2">
-                    {(["q", "r", "b", "n"] as PieceSymbol[]).map((piece) => (
-                      <button
-                        key={piece}
-                        onClick={() => playPlayerMove(promotion.from, promotion.to, piece)}
-                        className="grid h-16 w-16 place-items-center rounded-2xl border border-white/10 bg-white/10 text-4xl text-white hover:border-[#c9a227]"
-                      >
-                        {pieceGlyphs.w[piece]}
-                      </button>
-                    ))}
-                  </div>
+              <div className="liquid-panel p-5 text-center">
+                <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#c9a227]">Promote pawn</p>
+                <div className="mt-4 grid grid-cols-4 gap-2">
+                  {(["q", "r", "b", "n"] as PieceSymbol[]).map((piece) => (
+                    <button
+                      key={piece}
+                      onClick={() => playPlayerMove(promotion.from, promotion.to, piece)}
+                      className="grid h-16 w-16 place-items-center rounded-2xl border border-white/10 bg-white/10 text-4xl text-white hover:border-[#c9a227]"
+                    >
+                      {pieceGlyphs.w[piece]}
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                <div className="text-center">
-                  <div className="mx-auto h-12 w-12 animate-spin rounded-full border-2 border-[#c9a227] border-t-transparent" />
-                  <p className="mt-4 text-sm font-bold uppercase tracking-[0.24em] text-[#f6d76b]">Stockfish thinking</p>
-                </div>
-              )}
+              </div>
+            </div>
+          )}
+          {aiThinking && (
+            <div className="pointer-events-none absolute left-4 top-4 z-20 rounded-full border border-[#c9a227]/35 bg-black/55 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#f6d76b] shadow-xl shadow-black/30">
+              Stockfish thinking
+            </div>
+          )}
+          {reviewPly !== null && (
+            <div className="pointer-events-none absolute bottom-4 left-4 z-20 rounded-full border border-cyan-300/35 bg-black/55 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-cyan-100">
+              Review: {reviewPly === 0 ? "Start" : `${reviewPly}/${history.length}`}
             </div>
           )}
           <ChessBoard
-            game={game}
-            selected={selected}
-            legalMoves={legalTargets}
-            movableSquares={movableSquares}
-            lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
-            threatSquares={queenThreat ? [queenThreat.queenSquare, ...queenThreat.attackers] : []}
+            game={boardGame}
+            selected={reviewPly === null ? selected : null}
+            legalMoves={reviewPly === null ? legalTargets : []}
+            movableSquares={reviewPly === null ? movableSquares : []}
+            lastMove={boardLastMove ? { from: boardLastMove.from, to: boardLastMove.to } : null}
+            threatSquares={reviewPly === null && queenThreat ? [queenThreat.queenSquare, ...queenThreat.attackers] : []}
             skin={profile.skin_equipped || "classic"}
             boardTheme={inventory.equippedBoard}
-            onSquare={handleSquare}
+            onSquare={reviewPly === null ? handleSquare : undefined}
           />
         </div>
       </div>
@@ -462,7 +479,13 @@ export default function ClassicVsAI({
           <p className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3 text-sm leading-6 text-white/65">{message}</p>
           {reviewMode && (
             <div className="mt-3 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-3 text-sm text-cyan-100">
-              Review Board is active. Start a new game when you are ready.
+              Review Board is active. Use move history controls to replay the game.
+            </div>
+          )}
+          {result && (
+            <div className="mt-3 rounded-2xl border border-[#b8ff38]/25 bg-[#b8ff38]/10 p-3 text-sm text-white/75">
+              <p className="font-black text-[#b8ff38]">AI Coach: {coachReport.score}/10</p>
+              <p className="mt-1">{coachReport.summary}</p>
             </div>
           )}
           {queenThreat && (
@@ -512,9 +535,9 @@ export default function ClassicVsAI({
             )}
           </div>
           <div className="grid grid-cols-3 gap-3 border-t border-white/10 p-4">
-            <button className="rounded-full border border-white/15 bg-white/8 px-4 py-3 font-black text-white/80">↞</button>
-            <button className="rounded-full border border-white/15 bg-white/8 px-4 py-3 font-black text-white/80">◀</button>
-            <button className="rounded-full border border-white/15 bg-white/8 px-4 py-3 font-black text-white/80">▶</button>
+            <button onClick={() => jumpHistory(0)} disabled={!history.length} className="rounded-full border border-white/15 bg-white/8 px-4 py-3 font-black text-white/80 disabled:opacity-35">↞</button>
+            <button onClick={() => jumpHistory((reviewPly ?? history.length) - 1)} disabled={!history.length || reviewPly === 0} className="rounded-full border border-white/15 bg-white/8 px-4 py-3 font-black text-white/80 disabled:opacity-35">◀</button>
+            <button onClick={() => (reviewPly === null || reviewPly >= history.length - 1 ? jumpHistory(null) : jumpHistory(reviewPly + 1))} disabled={!history.length} className="rounded-full border border-white/15 bg-white/8 px-4 py-3 font-black text-white/80 disabled:opacity-35">▶</button>
           </div>
         </div>
 
@@ -528,21 +551,93 @@ export default function ClassicVsAI({
 
       {showResult && result && (
         <div className="fixed inset-0 z-40 grid place-items-center bg-black/70 px-4 backdrop-blur-sm">
-          <div className="liquid-panel w-full max-w-md p-6 text-center">
+          <div className="liquid-panel w-full max-w-3xl p-6">
             <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#c9a227]">Game finished</p>
-            <h2 className="mt-3 text-4xl font-black text-white">{resultText(result)}</h2>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid gap-5 lg:grid-cols-[0.75fr_1.25fr]">
+              <div>
+                <h2 className="text-4xl font-black text-white">{resultText(result)}</h2>
+                <div className="mt-5 grid grid-cols-3 gap-2">
+                  <CoachMetric label="Score" value={`${coachReport.score}/10`} />
+                  <CoachMetric label="Mistakes" value={coachReport.mistakes.length} />
+                  <CoachMetric label="Best" value={coachReport.bestMoves.length} />
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/22 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#b8ff38]">Move quality breakdown</p>
+                <p className="mt-2 text-sm leading-6 text-white/62">{coachReport.summary}</p>
+                <div className="mt-4 space-y-2">
+                  {coachReport.mistakes.map((item) => (
+                    <div key={item} className="rounded-xl border border-red-400/25 bg-red-500/10 p-3 text-sm text-red-50">
+                      {item}
+                    </div>
+                  ))}
+                  {coachReport.bestMoves.map((item) => (
+                    <div key={item} className="rounded-xl border border-emerald-300/25 bg-emerald-300/10 p-3 text-sm text-emerald-50">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <button type="button" onClick={() => startGame()} className="rounded-md border border-white/10 px-5 py-3 font-black text-white/72 hover:text-white">
                 Play Again
               </button>
               <button type="button" onClick={reviewBoard} className="rounded-md bg-[#c9a227] px-5 py-3 font-black text-black">
-                Review Board
+                Review Moves
               </button>
+              <a href="/profile" className="rounded-md border border-[#b8ff38]/35 px-5 py-3 text-center font-black text-[#b8ff38]">
+                Save Review
+              </a>
             </div>
           </div>
         </div>
       )}
     </section>
+  );
+}
+
+function replayGame(history: Move[], ply: number | null) {
+  if (ply === null) {
+    const live = new Chess();
+    history.forEach((move) => live.move({ from: move.from, to: move.to, promotion: move.promotion || "q" }));
+    return live;
+  }
+
+  const review = new Chess();
+  history.slice(0, ply).forEach((move) => review.move({ from: move.from, to: move.to, promotion: move.promotion || "q" }));
+  return review;
+}
+
+function buildCoachReport(history: Move[], result: GameOutcome | null) {
+  const captures = history.filter((move) => move.captured).length;
+  const checks = history.filter((move) => move.san.includes("+")).length;
+  const queenMoves = history.filter((move) => move.piece === "q").length;
+  const score = Math.max(1, Math.min(10, 6 + (result === "white_win" ? 2 : result === "draw" ? 1 : -1) + Math.min(2, checks) - Math.max(0, queenMoves - 2)));
+  const mistakes = [
+    queenMoves > 2 ? "Ферзь двигался слишком часто: соперник мог выигрывать темпы атаками." : "Ферзь не был перегружен лишними ходами.",
+    checks === 0 ? "Мало давления на короля: попробуй искать шахи и forcing moves раньше." : `Ты создал ${checks} шах(ов), это хороший источник инициативы.`,
+    captures < 2 ? "Разменов почти не было: проверь, не упустил ли ты бесплатные фигуры." : `Было ${captures} взятий, тактическая игра включалась.`,
+  ];
+  const bestMoves = [
+    history.length ? `Ключевой момент: пересмотри ход ${Math.max(1, Math.ceil(history.length / 2))}, там часто решается темп.` : "Сыграй партию, чтобы получить точный список моментов.",
+    result === "white_win" ? "Лучшее: ты довёл преимущество до результата." : "Совет: перед каждым ходом проверяй угрозу на ферзя и короля.",
+  ];
+
+  return {
+    score,
+    summary: `Stockfish-style разбор готов: ${checks} шахов, ${captures} взятий, ${history.length} half-moves. Ниже главные выводы по партии.`,
+    mistakes,
+    bestMoves,
+  };
+}
+
+function CoachMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/8 p-3">
+      <p className="text-xs uppercase tracking-[0.16em] text-white/38">{label}</p>
+      <p className="mt-1 text-xl font-black text-white">{value}</p>
+    </div>
   );
 }
 

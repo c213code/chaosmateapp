@@ -9,6 +9,7 @@ import { calculateElo, getGameResult, getMovableSquares, getQueenThreat, makeMov
 import { ensureUserProfileForGames, isForeignKeyError, supabase } from "@/app/lib/supabase";
 import type { ChaosMateUser, Profile } from "@/app/lib/types";
 import { applyTheme, loadInventory, type InventoryState } from "@/app/lib/progression";
+import { getRoomSocket, type SocketRoom } from "@/app/lib/socketRooms";
 
 type PromotionState = { from: Square; to: Square } | null;
 type Outcome = "white_win" | "black_win" | "draw" | "resigned";
@@ -137,6 +138,47 @@ export default function VariantChessGame({
       setMessage(onlinePlayerColor ? `Online room ready. You play ${onlinePlayerColor === "w" ? "White" : "Black"}.` : "Join the room to play.");
     }
   }, [onlinePlayerColor, onlineRoomId]);
+
+  useEffect(() => {
+    if (!onlineRoomId) {
+      return;
+    }
+
+    const socket = getRoomSocket();
+    const applySocketState = (room: SocketRoom) => {
+      if ((room.code || room.id).toUpperCase() !== onlineRoomId.toUpperCase()) {
+        return;
+      }
+
+      if (room.fen) {
+        setFen(room.fen);
+      }
+
+      if (room.movesPgn) {
+        const hydrated = new Chess();
+        try {
+          hydrated.loadPgn(room.movesPgn);
+          setHistory(hydrated.history({ verbose: true }));
+        } catch {
+          setHistory([]);
+        }
+      }
+
+      if (room.result && room.status === "finished") {
+        setResult(room.result as Outcome);
+        setShowResult(true);
+      }
+    };
+
+    socket.on("game:state", applySocketState);
+    socket.on("rooms:update", applySocketState);
+    socket.emit("game:sync", { roomId: onlineRoomId });
+
+    return () => {
+      socket.off("game:state", applySocketState);
+      socket.off("rooms:update", applySocketState);
+    };
+  }, [onlineRoomId]);
 
   useEffect(() => {
     const client = supabase;
@@ -289,6 +331,14 @@ export default function VariantChessGame({
 
       setGameId(`online-${onlineRoomId}`);
       setMessage(`${modeCopy[mode].title} online room started. White to move.`);
+      getRoomSocket().emit("game:move", {
+        roomId: onlineRoomId,
+        fen: next.fen(),
+        movesPgn: "",
+        movesSan: "",
+        result: null,
+        status: "playing",
+      });
       if (supabase) {
         await supabase
           .from("game_rooms")
@@ -489,11 +539,24 @@ export default function VariantChessGame({
   }
 
   async function persistGame(nextGame: Chess, nextHistory: Move[], status = "active", outcome?: Outcome) {
-    if (!supabase || !gameId || gameId.startsWith("local-")) {
+    if (!gameId || gameId.startsWith("local-")) {
       return;
     }
 
     if (onlineRoomId) {
+      getRoomSocket().emit("game:move", {
+        roomId: onlineRoomId,
+        fen: nextGame.fen(),
+        movesPgn: nextGame.pgn(),
+        movesSan: nextHistory.map((move) => move.san).join(" "),
+        status: status === "finished" ? "finished" : "playing",
+        result: outcome || null,
+      });
+
+      if (!supabase) {
+        return;
+      }
+
       await supabase
         .from("game_rooms")
         .update({
@@ -505,6 +568,10 @@ export default function VariantChessGame({
           ended_at: status === "finished" ? new Date().toISOString() : null,
         })
         .eq("id", onlineRoomId);
+      return;
+    }
+
+    if (!supabase) {
       return;
     }
 

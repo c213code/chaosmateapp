@@ -1,6 +1,7 @@
 "use client";
 
 import type { Color, PieceSymbol } from "chess.js";
+import type { Skin } from "@/app/lib/chess-platform";
 
 const labels: Record<PieceSymbol, string> = {
   p: "♟",
@@ -15,16 +16,19 @@ export default function PieceRenderer({
   color,
   type,
   landed = false,
+  skin = "classic",
 }: {
   color: Color;
   type: PieceSymbol;
   landed?: boolean;
+  skin?: Skin;
 }) {
   const gradientId = `${color}-${type}-piece-gradient`;
-  const stroke = color === "w" ? "#7b6a48" : "#05070d";
-  const fillTop = color === "w" ? "#ffffff" : "#4b5563";
-  const fillBottom = color === "w" ? "#d9d9d9" : "#111827";
-  const glow = color === "w" ? "rgba(255,255,255,0.46)" : "rgba(212,175,55,0.34)";
+  const palette = piecePalette(skin, color);
+  const stroke = palette.stroke;
+  const fillTop = palette.top;
+  const fillBottom = palette.bottom;
+  const glow = palette.glow;
 
   return (
     <svg
@@ -63,4 +67,28 @@ export default function PieceRenderer({
       <path d="M29 79 C39 85 61 85 71 79" fill="none" stroke={color === "w" ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.16)"} strokeWidth="2" />
     </svg>
   );
+}
+
+function piecePalette(skin: Skin, color: Color) {
+  if (skin === "neon") {
+    return color === "w"
+      ? { top: "#a7f3d0", bottom: "#22d3ee", stroke: "#083344", glow: "rgba(34,211,238,0.75)" }
+      : { top: "#f0abfc", bottom: "#7c3aed", stroke: "#1e0638", glow: "rgba(217,70,239,0.75)" };
+  }
+
+  if (skin === "gold") {
+    return color === "w"
+      ? { top: "#fff7ad", bottom: "#d4af37", stroke: "#6b4e00", glow: "rgba(250,204,21,0.72)" }
+      : { top: "#f59e0b", bottom: "#451a03", stroke: "#0c0a09", glow: "rgba(245,158,11,0.62)" };
+  }
+
+  if (skin === "wood") {
+    return color === "w"
+      ? { top: "#fde7c7", bottom: "#b77945", stroke: "#633b20", glow: "rgba(251,191,36,0.38)" }
+      : { top: "#7c4a2d", bottom: "#27150c", stroke: "#0c0a09", glow: "rgba(120,53,15,0.58)" };
+  }
+
+  return color === "w"
+    ? { top: "#ffffff", bottom: "#d9d9d9", stroke: "#7b6a48", glow: "rgba(255,255,255,0.46)" }
+    : { top: "#4b5563", bottom: "#111827", stroke: "#05070d", glow: "rgba(212,175,55,0.34)" };
 }

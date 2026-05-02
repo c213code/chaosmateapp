@@ -6,6 +6,8 @@ import AuthPage from "@/app/components/pages/AuthPage";
 import { kazakhstanCities, leaderboard } from "@/app/lib/chess-platform";
 import { supabase } from "@/app/lib/supabase";
 import type { Profile } from "@/app/lib/types";
+import { applyTheme, loadInventory, saveInventory, type InventoryState } from "@/app/lib/progression";
+import type { BoardTheme, Skin } from "@/app/lib/chess-platform";
 
 type LeaderboardRow = {
   username: string;
@@ -16,18 +18,28 @@ type LeaderboardRow = {
   coins: number;
 };
 
+type GameHistoryRow = {
+  id: string;
+  mode: string;
+  result: string | null;
+  moves_san: string | null;
+  moves_pgn: string | null;
+  started_at: string;
+  ended_at: string | null;
+};
+
 const pieceSkins = [
-  { id: "classic", name: "Classic", price: 0, preview: "♔♞", tone: "from-zinc-100 to-zinc-400" },
-  { id: "neon", name: "Neon", price: 320, preview: "♕♘", tone: "from-cyan-300 to-fuchsia-500" },
-  { id: "gold", name: "Gold", price: 520, preview: "♛♞", tone: "from-[#fff0a3] to-[#b8860b]" },
-  { id: "wood", name: "Wood", price: 420, preview: "♜♟", tone: "from-amber-200 to-stone-700" },
+  { id: "classic" as Skin, name: "Classic", price: 0, preview: "♔♞", tone: "from-zinc-100 to-zinc-400" },
+  { id: "neon" as Skin, name: "Neon", price: 320, preview: "♕♘", tone: "from-cyan-300 to-fuchsia-500" },
+  { id: "gold" as Skin, name: "Gold", price: 520, preview: "♛♞", tone: "from-[#fff0a3] to-[#b8860b]" },
+  { id: "wood" as Skin, name: "Wood", price: 420, preview: "♜♟", tone: "from-amber-200 to-stone-700" },
 ] as const;
 
 const boardThemes = [
-  { name: "Royal Wood", price: 260, light: "#e8dcc4", dark: "#a97b59" },
-  { name: "Midnight Glass", price: 380, light: "#c7d2fe", dark: "#111827" },
-  { name: "Emerald Club", price: 460, light: "#d1fae5", dark: "#047857" },
-  { name: "Carbon Arena", price: 560, light: "#d4d4d8", dark: "#27272a" },
+  { id: "royal-wood" as BoardTheme, name: "Royal Wood", price: 0, light: "#e8dcc4", dark: "#a97b59" },
+  { id: "midnight-glass" as BoardTheme, name: "Midnight Glass", price: 380, light: "#c7d2fe", dark: "#111827" },
+  { id: "emerald-club" as BoardTheme, name: "Emerald Club", price: 460, light: "#d1fae5", dark: "#047857" },
+  { id: "carbon-arena" as BoardTheme, name: "Carbon Arena", price: 560, light: "#d4d4d8", dark: "#27272a" },
 ];
 
 const emotePacks = [
@@ -47,8 +59,9 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
   const [cityFilter, setCityFilter] = useState("All cities");
   const [liveLeaderboard, setLiveLeaderboard] = useState<LeaderboardRow[]>([]);
   const [shopMessage, setShopMessage] = useState("");
-  const [hasPass, setHasPass] = useState(false);
-  const [rewardClaimed, setRewardClaimed] = useState(false);
+  const [inventory, setInventory] = useState<InventoryState | null>(null);
+  const [gameHistory, setGameHistory] = useState<GameHistoryRow[]>([]);
+  const [coachText, setCoachText] = useState("");
 
   useEffect(() => {
     if (view !== "leaderboard" || !supabase) {
@@ -89,6 +102,33 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
     };
   }, [view]);
 
+  useEffect(() => {
+    if (view !== "profile" || !profile || !supabase) {
+      return;
+    }
+
+    const client = supabase;
+    let alive = true;
+
+    async function loadHistory() {
+      const { data } = await client
+        .from("games")
+        .select("id,mode,result,moves_san,moves_pgn,started_at,ended_at")
+        .order("started_at", { ascending: false })
+        .limit(12);
+
+      if (alive && data) {
+        setGameHistory(data as GameHistoryRow[]);
+      }
+    }
+
+    loadHistory();
+
+    return () => {
+      alive = false;
+    };
+  }, [profile, view]);
+
   const leaderboardRows = useMemo(() => {
     const rows = liveLeaderboard.length
       ? liveLeaderboard
@@ -102,9 +142,20 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
       return;
     }
 
-    setHasPass(window.localStorage.getItem(`chaosmate-pass-${profile.id}`) === "owned");
-    setRewardClaimed(window.localStorage.getItem(`chaosmate-elo1300-${profile.id}`) === "claimed");
+    const loaded = loadInventory(profile.id);
+    setInventory(loaded);
+    applyTheme(loaded.theme);
   }, [profile, view]);
+
+  function updateInventory(next: InventoryState) {
+    if (!profile) {
+      return;
+    }
+
+    setInventory(next);
+    saveInventory(profile.id, next);
+    applyTheme(next.theme);
+  }
 
   async function saveProfile(nextProfile: Profile) {
     setProfile(nextProfile);
@@ -144,7 +195,7 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
   }
 
   async function claimEloReward() {
-    if (!profile || rewardClaimed) {
+    if (!profile || !inventory || inventory.elo1300Claimed) {
       return;
     }
 
@@ -154,9 +205,8 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
       return;
     }
 
-    const reward = hasPass ? 80 : 20;
-    window.localStorage.setItem(`chaosmate-elo1300-${profile.id}`, "claimed");
-    setRewardClaimed(true);
+    const reward = inventory.hasPass ? 80 : 20;
+    updateInventory({ ...inventory, elo1300Claimed: true });
     await saveProfile({ ...profile, coins: profile.coins + reward });
     setShopMessage(`ELO 1300 reward claimed: +${reward} coins.`);
   }
@@ -216,6 +266,31 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                 ))}
               </div>
             </div>
+            <div className="cm-panel p-6 lg:col-span-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#d4af37]">Game history</p>
+                  <h2 className="mt-1 text-2xl font-black">Recent games and AI Coach</h2>
+                </div>
+                <a href="/game/classic" className="cm-button px-4 py-2 text-sm font-black">Play new game</a>
+              </div>
+              <div className="mt-5 grid gap-3">
+                {gameHistory.map((game) => (
+                  <div key={game.id} className="grid gap-3 rounded-xl border border-white/10 bg-white/8 p-4 md:grid-cols-[1fr_120px_150px] md:items-center">
+                    <div>
+                      <p className="font-black">{game.mode.replace(/_/g, " ").toUpperCase()}</p>
+                      <p className="mt-1 line-clamp-1 font-mono text-xs text-white/45">{game.moves_san || "No moves saved yet"}</p>
+                    </div>
+                    <span className="rounded-md border border-white/10 bg-black/20 px-3 py-2 text-center text-sm font-bold text-white/70">{game.result || "active"}</span>
+                    <button onClick={() => setCoachText(aiCoach(game.moves_san || game.moves_pgn || ""))} className="rounded-md border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-2 text-sm font-black text-[#f7d96b]">
+                      Analyze with AI Coach
+                    </button>
+                  </div>
+                ))}
+                {!gameHistory.length && <p className="rounded-xl border border-white/10 bg-white/8 p-4 text-white/55">No saved games yet.</p>}
+              </div>
+              {coachText && <div className="mt-5 rounded-xl border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm leading-6 text-cyan-50">{coachText}</div>}
+            </div>
           </section>
         )}
 
@@ -262,7 +337,13 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                 <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                   <p className="text-sm text-white/48">Balance</p>
                   <p className="text-4xl font-black text-[#f7d96b]">{profile.coins} coins</p>
-                  <p className="mt-1 text-xs text-white/42">Equipped: {profile.skin_equipped}</p>
+                  <p className="mt-1 text-xs text-white/42">Equipped: {profile.skin_equipped} · {inventory?.equippedBoard || "royal-wood"}</p>
+                  <button
+                    onClick={() => inventory && updateInventory({ ...inventory, theme: inventory.theme === "dark" ? "light" : "dark" })}
+                    className="mt-3 w-full rounded-md border border-white/10 px-3 py-2 text-sm font-bold text-white/70 hover:text-white"
+                  >
+                    {inventory?.theme === "light" ? "Switch dark theme" : "Switch light theme"}
+                  </button>
                 </div>
               </div>
               {shopMessage && <p className="mt-5 rounded-xl border border-[#d4af37]/30 bg-[#d4af37]/10 p-3 text-sm font-bold text-[#f7d96b]">{shopMessage}</p>}
@@ -279,25 +360,24 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                   <ShopMetric label="Pass reward" value="80 coins" />
                 </div>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <button onClick={claimEloReward} disabled={rewardClaimed} className="cm-button px-4 py-3 font-black disabled:opacity-45">
-                    {rewardClaimed ? "Reward claimed" : "Claim ELO reward"}
+                  <button onClick={claimEloReward} disabled={inventory?.elo1300Claimed} className="cm-button px-4 py-3 font-black disabled:opacity-45">
+                    {inventory?.elo1300Claimed ? "Reward claimed" : "Claim ELO reward"}
                   </button>
                   <button
                     onClick={() =>
                       spendCoins(
                         700,
                         (nextProfile) => {
-                          window.localStorage.setItem(`chaosmate-pass-${nextProfile.id}`, "owned");
-                          setHasPass(true);
+                          updateInventory({ ...(inventory || loadInventory(nextProfile.id)), hasPass: true });
                           return nextProfile;
                         },
                         "Chaos Pass",
                       )
                     }
-                    disabled={hasPass}
+                    disabled={inventory?.hasPass}
                     className="rounded-md border border-[#d4af37]/45 bg-[#d4af37]/10 px-4 py-3 font-black text-[#f7d96b] disabled:opacity-45"
                   >
-                    {hasPass ? "Pass active" : "Buy Chaos Pass · 700 coins"}
+                    {inventory?.hasPass ? "Pass active" : "Buy Chaos Pass · 700 coins"}
                   </button>
                 </div>
               </div>
@@ -329,19 +409,26 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                   <p className="mt-1 text-sm text-white/48">{skin.price ? `${skin.price} coins` : "Default unlocked"}</p>
                   <button
                     onClick={() =>
-                      skin.price
-                        ? spendCoins(skin.price, (nextProfile) => ({ ...nextProfile, skin_equipped: skin.id }), `${skin.name} skin`)
-                        : saveProfile({ ...profile, skin_equipped: skin.id })
+                      inventory?.skins.includes(skin.id)
+                        ? saveProfile({ ...profile, skin_equipped: skin.id })
+                        : spendCoins(
+                            skin.price,
+                            (nextProfile) => {
+                              updateInventory({ ...(inventory || loadInventory(nextProfile.id)), skins: [...(inventory?.skins || ["classic"]), skin.id] });
+                              return { ...nextProfile, skin_equipped: skin.id };
+                            },
+                            `${skin.name} skin`,
+                          )
                     }
                     className="cm-button mt-4 w-full px-4 py-3 font-black"
                   >
-                    {profile.skin_equipped === skin.id ? "Equipped" : skin.price ? "Buy & equip" : "Equip"}
+                    {profile.skin_equipped === skin.id ? "Equipped" : inventory?.skins.includes(skin.id) ? "Equip" : skin.price ? "Buy & equip" : "Equip"}
                   </button>
                 </div>
               ))}
             </ShopSection>
 
-            <ShopSection title="Board Themes" subtitle="Visual board catalog. Full theme persistence can be wired once board_theme exists in Supabase.">
+            <ShopSection title="Board Themes" subtitle="Unlocked board themes are saved and applied inside every game.">
               {boardThemes.map((theme) => (
                 <div key={theme.name} className="cm-card p-5">
                   <div className="grid aspect-video grid-cols-4 overflow-hidden rounded-xl border border-white/10">
@@ -350,8 +437,26 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                     ))}
                   </div>
                   <h3 className="mt-4 text-xl font-black">{theme.name}</h3>
-                  <button onClick={() => spendCoins(theme.price, (nextProfile) => nextProfile, `${theme.name} board theme`)} className="cm-button mt-4 w-full px-4 py-3 font-black">
-                    Unlock · {theme.price} coins
+                  <button
+                    onClick={() =>
+                      inventory?.boardThemes.includes(theme.id)
+                        ? updateInventory({ ...inventory, equippedBoard: theme.id })
+                        : spendCoins(
+                            theme.price,
+                            (nextProfile) => {
+                              updateInventory({
+                                ...(inventory || loadInventory(nextProfile.id)),
+                                boardThemes: [...(inventory?.boardThemes || ["royal-wood"]), theme.id],
+                                equippedBoard: theme.id,
+                              });
+                              return nextProfile;
+                            },
+                            `${theme.name} board theme`,
+                          )
+                    }
+                    className="cm-button mt-4 w-full px-4 py-3 font-black"
+                  >
+                    {inventory?.equippedBoard === theme.id ? "Equipped" : inventory?.boardThemes.includes(theme.id) ? "Equip" : `Unlock · ${theme.price} coins`}
                   </button>
                 </div>
               ))}
@@ -368,8 +473,25 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                     ))}
                   </div>
                   <h3 className="mt-4 text-xl font-black">{pack.name}</h3>
-                  <button onClick={() => spendCoins(pack.price, (nextProfile) => nextProfile, `${pack.name} emotes`)} className="cm-button mt-4 w-full px-4 py-3 font-black">
-                    Buy · {pack.price} coins
+                  <button
+                    onClick={() =>
+                      pack.items.every((item) => inventory?.emotes.includes(item))
+                        ? setShopMessage(`${pack.name} already owned.`)
+                        : spendCoins(
+                            pack.price,
+                            (nextProfile) => {
+                              updateInventory({
+                                ...(inventory || loadInventory(nextProfile.id)),
+                                emotes: Array.from(new Set([...(inventory?.emotes || []), ...pack.items])),
+                              });
+                              return nextProfile;
+                            },
+                            `${pack.name} emotes`,
+                          )
+                    }
+                    className="cm-button mt-4 w-full px-4 py-3 font-black"
+                  >
+                    {pack.items.every((item) => inventory?.emotes.includes(item)) ? "Owned" : `Buy · ${pack.price} coins`}
                   </button>
                 </div>
               ))}
@@ -400,6 +522,25 @@ function ShopMetric({ label, value }: { label: string; value: number | string })
       <p className="mt-1 text-xl font-black text-white">{value}</p>
     </div>
   );
+}
+
+function aiCoach(moves: string) {
+  const tokens = moves.split(/\s+/).filter(Boolean);
+  if (!tokens.length) {
+    return "AI Coach: Недостаточно ходов для анализа. Сыграй партию хотя бы на несколько ходов.";
+  }
+
+  const queenMovedEarly = tokens.slice(0, 8).some((move) => move.includes("Q"));
+  const checks = tokens.filter((move) => move.includes("+")).length;
+  const captures = tokens.filter((move) => move.includes("x")).length;
+  const castled = tokens.some((move) => move.includes("O-O"));
+  const mistakes = [
+    queenMovedEarly ? "Ферзь вышел слишком рано: соперник может выиграть темп атакой на ферзя." : "Ранний дебют выглядит спокойно: ферзь не был выведен слишком рано.",
+    castled ? "Король был уведён в безопасность рокировкой." : "Главная ошибка: король долго оставался в центре. Часто лучше рокироваться раньше.",
+    captures > tokens.length / 3 ? "Много разменов: проверь, не отдавал ли ты активные фигуры без выгоды." : "Разменов немного, позиционное напряжение сохранялось.",
+  ];
+
+  return `AI Coach: сыграно ${tokens.length} half-moves. Checks: ${checks}, captures: ${captures}. Top feedback: ${mistakes.join(" ")}`;
 }
 
 function Stat({ label, value }: { label: string; value: number }) {

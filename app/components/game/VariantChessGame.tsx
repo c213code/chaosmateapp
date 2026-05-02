@@ -8,6 +8,7 @@ import { files, isControlledBySeat, pieceGlyphs, teleportOpponentPiece, type Gam
 import { calculateElo, getGameResult, getMovableSquares, getQueenThreat, makeMove, needsPromotion, START_FEN } from "@/app/lib/gameLogic";
 import { ensureUserProfileForGames, isForeignKeyError, supabase } from "@/app/lib/supabase";
 import type { ChaosMateUser, Profile } from "@/app/lib/types";
+import { applyTheme, loadInventory, type InventoryState } from "@/app/lib/progression";
 
 type PromotionState = { from: Square; to: Square } | null;
 type Outcome = "white_win" | "black_win" | "draw" | "resigned";
@@ -73,6 +74,7 @@ export default function VariantChessGame({
   const [showResult, setShowResult] = useState(false);
   const [message, setMessage] = useState("Press New Game to start.");
   const [tableTalk, setTableTalk] = useState("Unlock more emotes in the shop.");
+  const [inventory, setInventory] = useState<InventoryState>(() => loadInventory(profile.id));
   const [orientation, setOrientation] = useState<Color>("w");
   const [switchCountdown, setSwitchCountdown] = useState(() => randomSwitchCountdown());
   const [switching, setSwitching] = useState(0);
@@ -101,6 +103,18 @@ export default function VariantChessGame({
   const movableSquares =
     result || aiThinking || !isPlayerTurn ? [] : getMovableSquares(game, turn).filter((square) => canMoveSquare(game, square, mode, teamSeat));
   const gameStatus = result ? "finished" : game.isCheck() ? "check" : gameId ? "playing" : "idle";
+
+  useEffect(() => {
+    const syncInventory = () => {
+      const next = loadInventory(profile.id);
+      setInventory(next);
+      applyTheme(next.theme);
+    };
+
+    syncInventory();
+    window.addEventListener("chaosmate-inventory-change", syncInventory);
+    return () => window.removeEventListener("chaosmate-inventory-change", syncInventory);
+  }, [profile.id]);
 
   useEffect(() => {
     if (!selected) {
@@ -632,6 +646,7 @@ export default function VariantChessGame({
               threatSquares={queenThreat ? [queenThreat.queenSquare, ...queenThreat.attackers] : []}
               hiddenSquares={hiddenSquares}
               skin={profile.skin_equipped || "classic"}
+              boardTheme={inventory.equippedBoard}
               onSquare={handleSquare}
             />
           </div>
@@ -667,7 +682,7 @@ export default function VariantChessGame({
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/38">Table talk</p>
             <p className="mt-2 min-h-6 text-sm font-bold text-[#f7d96b]">{tableTalk}</p>
             <div className="mt-3 grid grid-cols-3 gap-2">
-              {["GG", "No way", "⚡"].map((item) => (
+              {inventory.emotes.slice(0, 6).map((item) => (
                 <button key={item} onClick={() => setTableTalk(item)} className="rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm font-bold text-white/70 hover:border-[#d4af37]/45 hover:text-white">
                   {item}
                 </button>

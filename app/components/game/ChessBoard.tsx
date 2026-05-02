@@ -1,7 +1,7 @@
 "use client";
 
 import { Chess, type Color, type PieceSymbol, type Square } from "chess.js";
-import { getBoardSquares, type Skin } from "@/app/lib/chess-platform";
+import { getBoardSquares, type BoardTheme, type Skin } from "@/app/lib/chess-platform";
 import PieceRenderer from "@/app/components/game/PieceRenderer";
 
 export default function ChessBoard({
@@ -14,6 +14,7 @@ export default function ChessBoard({
   threatSquares,
   hiddenSquares,
   skin = "classic",
+  boardTheme = "royal-wood",
   onSquare,
 }: {
   game: Chess;
@@ -25,6 +26,7 @@ export default function ChessBoard({
   threatSquares?: Square[];
   hiddenSquares?: Square[];
   skin?: Skin;
+  boardTheme?: BoardTheme;
   onSquare?: (square: Square) => void;
 }) {
   const legal = new Set(legalMoves || []);
@@ -33,7 +35,7 @@ export default function ChessBoard({
   const hidden = new Set(hiddenSquares || []);
 
   return (
-    <div className="board-shell rounded-xl border border-white/10 p-2 shadow-2xl shadow-black/50">
+    <div className={`board-shell board-theme-${boardTheme} rounded-xl border border-white/10 p-2 shadow-2xl shadow-black/50`}>
       <div className="board-grid grid aspect-square w-full grid-cols-8 overflow-hidden rounded-[22px]">
         {getBoardSquares(orientation).map(({ square, isLight, file, rank }) => {
           const piece = game.get(square);
@@ -62,7 +64,7 @@ export default function ChessBoard({
               {file === edgeFile && <span className="absolute left-1 top-1 text-[10px] font-bold text-black/45">{rank}</span>}
               {isLegal && <span className="absolute h-4 w-4 rounded-full bg-[#c9a227]/85 shadow-[0_0_18px_rgba(201,162,39,0.8)]" />}
               {isMovable && !selected && <span className="movable-piece-halo" />}
-              {piece && !isHidden && <PieceRenderer color={piece.color} type={piece.type as PieceSymbol} landed={isLanding} />}
+              {piece && !isHidden && <PieceRenderer color={piece.color} type={piece.type as PieceSymbol} landed={isLanding} skin={skin} />}
             </button>
           );
         })}

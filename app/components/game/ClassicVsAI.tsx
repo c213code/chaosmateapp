@@ -7,6 +7,7 @@ import { getGameResult, getMovableSquares, getQueenThreat, makeMove, needsPromot
 import { ensureUserProfileForGames, isForeignKeyError, supabase } from "@/app/lib/supabase";
 import type { ChaosMateUser, Profile } from "@/app/lib/types";
 import ChessBoard from "@/app/components/game/ChessBoard";
+import { applyTheme, loadInventory, type InventoryState } from "@/app/lib/progression";
 
 type PromotionState = { from: Square; to: Square } | null;
 type GameOutcome = "white_win" | "black_win" | "draw" | "resigned";
@@ -48,6 +49,7 @@ export default function ClassicVsAI({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("Choose difficulty and start a new Classic vs AI game.");
   const [tableTalk, setTableTalk] = useState("Use emotes after buying packs in the shop.");
+  const [inventory, setInventory] = useState<InventoryState>(() => loadInventory(profile.id));
   const [result, setResult] = useState<GameOutcome | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
@@ -69,6 +71,18 @@ export default function ClassicVsAI({
     .filter((move) => move.color === "b" && move.captured)
     .map((move) => move.captured)
     .filter((piece): piece is PieceSymbol => Boolean(piece));
+
+  useEffect(() => {
+    const syncInventory = () => {
+      const next = loadInventory(profile.id);
+      setInventory(next);
+      applyTheme(next.theme);
+    };
+
+    syncInventory();
+    window.addEventListener("chaosmate-inventory-change", syncInventory);
+    return () => window.removeEventListener("chaosmate-inventory-change", syncInventory);
+  }, [profile.id]);
 
   useEffect(() => {
     engineRef.current = new Worker("/stockfish/stockfish-18-lite-single.js");
@@ -430,6 +444,7 @@ export default function ClassicVsAI({
             lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
             threatSquares={queenThreat ? [queenThreat.queenSquare, ...queenThreat.attackers] : []}
             skin={profile.skin_equipped || "classic"}
+            boardTheme={inventory.equippedBoard}
             onSquare={handleSquare}
           />
         </div>
@@ -469,7 +484,7 @@ export default function ClassicVsAI({
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/38">Table talk</p>
             <p className="mt-2 min-h-6 text-sm font-bold text-[#f7d96b]">{tableTalk}</p>
             <div className="mt-3 grid grid-cols-3 gap-2">
-              {["GG", "Nice move", "🔥"].map((item) => (
+              {inventory.emotes.slice(0, 6).map((item) => (
                 <button key={item} onClick={() => setTableTalk(item)} className="rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm font-bold text-white/70 hover:border-[#d4af37]/45 hover:text-white">
                   {item}
                 </button>

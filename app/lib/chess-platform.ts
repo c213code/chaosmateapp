@@ -12,6 +12,7 @@ export type GameMode =
 
 export type Difficulty = "Easy" | "Medium" | "Hard";
 export type Skin = "classic" | "neon" | "gold" | "wood";
+export type BoardTheme = "royal-wood" | "midnight-glass" | "emerald-club" | "carbon-arena";
 
 export type TeamSeat =
   | "white-major"

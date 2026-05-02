@@ -584,6 +584,44 @@ button:hover .piece-token .piece {
     #a97b59;
 }
 
+.board-theme-midnight-glass .light-square {
+  background: linear-gradient(145deg, #dbeafe, #93c5fd 48%, #64748b);
+}
+
+.board-theme-midnight-glass .dark-square {
+  background: linear-gradient(145deg, #1f2937, #0f172a 52%, #020617);
+}
+
+.board-theme-emerald-club .light-square {
+  background: linear-gradient(145deg, #dcfce7, #86efac 48%, #34d399);
+}
+
+.board-theme-emerald-club .dark-square {
+  background: linear-gradient(145deg, #059669, #047857 52%, #064e3b);
+}
+
+.board-theme-carbon-arena .light-square {
+  background: linear-gradient(145deg, #f4f4f5, #a1a1aa 48%, #71717a);
+}
+
+.board-theme-carbon-arena .dark-square {
+  background: linear-gradient(145deg, #3f3f46, #27272a 52%, #09090b);
+}
+
+.cm-light body,
+.cm-light .cm-page {
+  background: #eef2ff;
+  color: #111827;
+}
+
+.cm-light .cm-panel,
+.cm-light .cm-card,
+.cm-light .liquid-panel {
+  background: rgba(255, 255, 255, 0.78);
+  color: #111827;
+  border-color: rgba(15, 23, 42, 0.15);
+}
+
 .piece-svg {
   position: relative;
   z-index: 2;

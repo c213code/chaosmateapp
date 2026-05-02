@@ -66,7 +66,6 @@ export default function GamePage({ profile }: GamePageProps) {
   async function handleLogout() {
     try {
       await signOut();
-      window.localStorage.clear();
       window.sessionStorage.clear();
     } catch (error) {
       console.error("Logout failed:", error);

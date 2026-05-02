@@ -1,11 +1,19 @@
 "use client";
 
+import { useEffect } from "react";
 import { useAuthProfile } from "@/app/components/auth/useAuthProfile";
 import AuthPage from "@/app/components/pages/AuthPage";
 import GamePage from "@/app/components/pages/GamePage";
+import { applyTheme, loadInventory } from "@/app/lib/progression";
 
 export default function ChaosMateApp() {
   const { user, profile, setProfile, loading } = useAuthProfile();
+
+  useEffect(() => {
+    if (profile) {
+      applyTheme(loadInventory(profile.id).theme);
+    }
+  }, [profile]);
 
   if (loading) {
     return (

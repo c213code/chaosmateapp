@@ -265,7 +265,6 @@ export default function VariantChessGame({
         mode: modeCopy[mode].dbMode,
         white_player_id: user.id,
         black_player_id: null,
-        ai_opponent: false,
         fen: next.fen(),
         moves_pgn: "",
         moves_san: "",

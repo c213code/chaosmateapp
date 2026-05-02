@@ -265,7 +265,6 @@ export async function createLocalMultiplayerGame(userId: string) {
       mode: "local_multiplayer",
       white_player_id: userId,
       black_player_id: null,
-      ai_opponent: false,
       fen: START_FEN,
       moves_pgn: "",
       moves_san: "",

@@ -164,7 +164,6 @@ export default function ClassicVsAI({
         mode: "classic",
         white_player_id: user.id,
         black_player_id: null,
-        ai_opponent: true,
         ai_difficulty: nextDifficulty,
         fen: next.fen(),
         moves_pgn: "",

@@ -109,12 +109,14 @@ export async function getOnlineRooms() {
 
 export async function createOnlineRoom({
   userId,
+  user,
   gameMode,
   difficulty,
   isPrivate,
   password,
 }: {
   userId: string;
+  user?: User;
   gameMode: string;
   difficulty?: string;
   isPrivate: boolean;
@@ -125,6 +127,10 @@ export async function createOnlineRoom({
 
   if (!supabase) {
     return { roomId, room: null, error: null };
+  }
+
+  if (user) {
+    await ensureUserProfileForGames(user);
   }
 
   const { data, error } = await supabase

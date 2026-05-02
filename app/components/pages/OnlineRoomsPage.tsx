@@ -76,6 +76,7 @@ export default function OnlineRoomsPage() {
     setError("");
     const { roomId, error } = await createOnlineRoom({
       userId: user.id,
+      user,
       gameMode: mode,
       difficulty,
       isPrivate,

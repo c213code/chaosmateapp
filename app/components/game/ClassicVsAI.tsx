@@ -355,6 +355,13 @@ export default function ClassicVsAI({
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#c9a227]">Classic vs AI</p>
               <h2 className="mt-1 text-2xl font-black text-white">Play Stockfish</h2>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {["You are White", "Click piece, then green square", "AI replies as Black", "ELO + coins after result"].map((item) => (
+                  <span key={item} className="rounded-full border border-white/10 bg-black/22 px-3 py-1 text-xs font-bold text-white/68">
+                    {item}
+                  </span>
+                ))}
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {(["Easy", "Medium", "Hard"] as Difficulty[]).map((level) => (

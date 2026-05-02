@@ -1,11 +1,71 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/app/components/auth/useAuthProfile";
 import AuthPage from "@/app/components/pages/AuthPage";
 import { kazakhstanCities, leaderboard } from "@/app/lib/chess-platform";
+import { supabase } from "@/app/lib/supabase";
+
+type LeaderboardRow = {
+  username: string;
+  city: string;
+  classic: number;
+  wins: number;
+  losses: number;
+  coins: number;
+};
 
 export default function GameRouteUtilityPage({ view }: { view: "profile" | "leaderboard" | "shop" }) {
   const { user, profile, loading } = useAuthProfile();
+  const [cityFilter, setCityFilter] = useState("All cities");
+  const [liveLeaderboard, setLiveLeaderboard] = useState<LeaderboardRow[]>([]);
+
+  useEffect(() => {
+    if (view !== "leaderboard" || !supabase) {
+      return;
+    }
+
+    const client = supabase;
+    let alive = true;
+
+    async function loadLeaderboard() {
+      const { data } = await client
+        .from("users")
+        .select("username,city,elo,wins,losses,coins")
+        .limit(100);
+
+      if (!alive || !data) {
+        return;
+      }
+
+      setLiveLeaderboard(
+        data
+          .map((item) => ({
+            username: String(item.username || "Player"),
+            city: String(item.city || "Almaty"),
+            classic: Number((item.elo as Record<string, number> | null)?.classic ?? 1200),
+            wins: Number(item.wins || 0),
+            losses: Number(item.losses || 0),
+            coins: Number(item.coins || 0),
+          }))
+          .sort((a, b) => b.classic - a.classic),
+      );
+    }
+
+    loadLeaderboard();
+
+    return () => {
+      alive = false;
+    };
+  }, [view]);
+
+  const leaderboardRows = useMemo(() => {
+    const rows = liveLeaderboard.length
+      ? liveLeaderboard
+      : leaderboard.map((player) => ({ username: player.username, city: player.city, classic: player.classic, wins: 0, losses: 0, coins: 0 }));
+
+    return cityFilter === "All cities" ? rows : rows.filter((player) => player.city === cityFilter);
+  }, [cityFilter, liveLeaderboard]);
 
   if (loading) {
     return <main className="cm-page grid min-h-screen place-items-center text-white">Loading ChaosMate...</main>;
@@ -72,7 +132,7 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                 <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#d4af37]">Kazakhstan leaderboard</p>
                 <h1 className="mt-2 text-3xl font-black">Global rankings by city</h1>
               </div>
-              <select className="rounded-md border border-white/10 bg-[#0f172a] px-3 py-2 text-white">
+              <select value={cityFilter} onChange={(event) => setCityFilter(event.target.value)} className="rounded-md border border-white/10 bg-[#0f172a] px-3 py-2 text-white">
                 <option>All cities</option>
                 {kazakhstanCities.map((city) => (
                   <option key={city}>{city}</option>
@@ -80,16 +140,18 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
               </select>
             </div>
             <div className="mt-6 space-y-3">
-              {leaderboard.map((player, index) => (
-                <div key={player.username} className="grid grid-cols-[42px_1fr_80px] items-center rounded-md border border-white/10 bg-white/8 px-4 py-3">
+              {leaderboardRows.map((player, index) => (
+                <div key={`${player.username}-${player.city}`} className="grid grid-cols-[42px_1fr_96px_90px] items-center rounded-md border border-white/10 bg-white/8 px-4 py-3">
                   <span className="text-xl font-black text-[#d4af37]">{index < 3 ? "♛" : index + 1}</span>
                   <span>
                     <span className="block font-bold">{player.username}</span>
-                    <span className="text-sm text-white/42">{player.city}</span>
+                    <span className="text-sm text-white/42">{player.city} · {player.wins}W/{player.losses}L</span>
                   </span>
+                  <span className="text-right text-sm font-bold text-[#f7d96b]">{player.coins} coins</span>
                   <span className="text-right font-black">{player.classic}</span>
                 </div>
               ))}
+              {!leaderboardRows.length && <p className="rounded-md border border-white/10 bg-white/8 p-4 text-white/55">No players in this city yet.</p>}
             </div>
           </section>
         )}

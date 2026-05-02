@@ -5,7 +5,7 @@ import { Chess, type Color, type Move, type PieceSymbol, type Square } from "che
 import ChessBoard from "@/app/components/game/ChessBoard";
 import PieceRenderer from "@/app/components/game/PieceRenderer";
 import { files, isControlledBySeat, pieceGlyphs, teleportOpponentPiece, type GameMode, type TeamSeat } from "@/app/lib/chess-platform";
-import { getGameResult, getMovableSquares, getQueenThreat, makeMove, needsPromotion, START_FEN } from "@/app/lib/gameLogic";
+import { calculateElo, getGameResult, getMovableSquares, getQueenThreat, makeMove, needsPromotion, START_FEN } from "@/app/lib/gameLogic";
 import { ensureUserProfileForGames, isForeignKeyError, supabase } from "@/app/lib/supabase";
 import type { ChaosMateUser, Profile } from "@/app/lib/types";
 
@@ -503,11 +503,14 @@ export default function VariantChessGame({
     const current = Number(profile.elo?.[key] ?? 1200);
     const won = outcome === "white_win";
     const lost = outcome === "black_win" || outcome === "resigned";
-    const nextElo = outcome === "draw" ? current : won ? current + 14 : lost ? Math.max(100, current - 14) : current;
+    const opponentElo = 1200;
+    const eloResult = calculateElo(current, opponentElo, outcome === "draw");
+    const nextElo = outcome === "draw" ? eloResult.new_winner_elo : won ? eloResult.new_winner_elo : lost ? eloResult.new_loser_elo : current;
+    const coinGain = won ? 10 : outcome === "draw" ? 5 : 3;
     const nextProfile = {
       ...profile,
       elo: { ...profile.elo, [key]: nextElo },
-      coins: profile.coins + (won ? 10 : outcome === "draw" ? 5 : 3),
+      coins: profile.coins + coinGain,
       wins: profile.wins + (won ? 1 : 0),
       losses: profile.losses + (lost ? 1 : 0),
     };
@@ -537,6 +540,13 @@ export default function VariantChessGame({
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#d4af37]">{copy.title}</p>
               <h1 className="mt-1 text-2xl font-black text-white">{copy.subtitle}</h1>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {modeHelp(mode).map((item) => (
+                  <span key={item} className="rounded-full border border-white/10 bg-black/22 px-3 py-1 text-xs font-bold text-white/68">
+                    {item}
+                  </span>
+                ))}
+              </div>
               {aiOpponent && <p className="mt-2 text-sm font-bold text-[#86efac]">AI opponent active</p>}
             </div>
             <div className="flex flex-wrap gap-2">
@@ -848,6 +858,30 @@ function modeNote(mode: GameMode) {
     return "Use the seat selector to play as the teammate who controls the current piece group.";
   }
   return "Standard local chess with full chess.js validation.";
+}
+
+function modeHelp(mode: GameMode) {
+  if (mode === "switch") {
+    return ["Every 5-10 legal moves", "Board turns to next side", "Control follows Turn"];
+  }
+
+  if (mode === "fog") {
+    return ["Only radius-1 vision", "Move closer to reveal", "Hidden pieces stay blurred"];
+  }
+
+  if (mode === "chaos") {
+    return ["Countdown every move", "White and Black both teleport", "Kings stay safe"];
+  }
+
+  if (mode === "speed") {
+    return ["Timer starts on first move", "Flag ends game", "No slow thinking"];
+  }
+
+  if (mode === "team") {
+    return ["Pick the active seat", "A controls pawns/rooks/queen", "B controls knights/bishops/king"];
+  }
+
+  return ["White moves first", "Click piece, then green square", "All rules by chess.js"];
 }
 
 function resultText(result: Outcome) {

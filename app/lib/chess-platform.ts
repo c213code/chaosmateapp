@@ -7,6 +7,7 @@ export type GameMode =
   | "switch"
   | "fog"
   | "chaos"
+  | "speed"
   | "team";
 
 export type Difficulty = "Easy" | "Medium" | "Hard";
@@ -80,6 +81,13 @@ export const modeMeta: Record<
     description: "Every six moves one opponent piece is jolted onto a random empty square.",
     ranked: true,
     accent: "from-[#67e8f9] to-[#f97316]",
+  },
+  speed: {
+    title: "Speed Chess",
+    eyebrow: "Bullet / Blitz",
+    description: "Fast chess with loud timers, pressure states, and timeout handling.",
+    ranked: true,
+    accent: "from-[#facc15] to-[#ef4444]",
   },
   team: {
     title: "2v2 Team Chess",

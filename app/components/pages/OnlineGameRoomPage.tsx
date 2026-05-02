@@ -86,6 +86,10 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
   }
 
   const variantMode = routeModeByRoomMode[room?.game_mode || "classic"] || "local";
+  const currentSeat = players.find((player) => player.user_id === user.id)?.team || (room?.created_by === user.id ? "white" : null);
+  const playerColor = currentSeat?.startsWith("black") ? "b" : currentSeat?.startsWith("white") || room?.created_by === user.id ? "w" : null;
+  const joined = Boolean(currentSeat);
+  const full = Number(room?.current_players || players.length) >= Number(room?.max_players || 2);
 
   return (
     <main className="cm-page min-h-screen text-white">
@@ -114,13 +118,13 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
               <span className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/65">
                 {room?.current_players || players.length}/{room?.max_players || 2} players
               </span>
-              <button onClick={joinRoom} className="cm-button px-4 py-2 font-black">
-                Join Room
+              <button onClick={joinRoom} disabled={joined || full} className="cm-button px-4 py-2 font-black disabled:opacity-45">
+                {joined ? `You are ${playerColor === "w" ? "White" : "Black"}` : full ? "Room full" : "Join Room"}
               </button>
             </div>
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-4">
-            {["white_a", "white_b", "black_a", "black_b"].slice(0, room?.game_mode === "2v2" ? 4 : 2).map((seat, index) => (
+            {(room?.game_mode === "2v2" ? ["white_a", "white_b", "black_a", "black_b"] : ["white", "black"]).map((seat, index) => (
               <div key={seat} className="rounded-md border border-white/10 bg-black/20 p-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-white/36">{seat.replace("_", " ")}</p>
                 <p className="mt-1 truncate font-bold">{players[index]?.user_id ? `Player ${index + 1}` : "Waiting..."}</p>
@@ -129,7 +133,7 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
           </div>
         </section>
 
-        <VariantChessGame mode={variantMode} user={user} profile={profile} setProfile={setProfile} onlineRoomId={roomId} />
+        <VariantChessGame mode={variantMode} user={user} profile={profile} setProfile={setProfile} onlineRoomId={roomId} onlinePlayerColor={playerColor || undefined} />
       </div>
     </main>
   );

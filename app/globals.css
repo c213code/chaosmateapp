@@ -622,6 +622,29 @@ button:hover .piece-token .piece {
   border-color: rgba(15, 23, 42, 0.15);
 }
 
+.cm-light [class*="text-white"] {
+  color: #111827 !important;
+}
+
+.cm-light [class*="text-gray"] {
+  color: #374151 !important;
+}
+
+.cm-light [class*="bg-black/"],
+.cm-light [class*="bg-white/"] {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+.cm-light [class*="text-[#f7d96b]"],
+.cm-light [class*="text-[#d4af37]"],
+.cm-light [class*="text-[#c9a227]"] {
+  color: #8a6500 !important;
+}
+
+.cm-light nav {
+  background: rgba(255, 255, 255, 0.82) !important;
+}
+
 .piece-svg {
   position: relative;
   z-index: 2;

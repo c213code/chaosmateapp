@@ -189,6 +189,25 @@ export async function joinOnlineRoom(roomId: string, userId: string, team = "bla
     return { error: new Error("Room is full") };
   }
 
+  const { data: existingPlayer, error: existingError } = await supabase
+    .from("room_players")
+    .select("id")
+    .eq("room_id", roomId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingError && isMissingTableError(existingError)) {
+    return { error: null };
+  }
+
+  if (existingError) {
+    return { error: existingError };
+  }
+
+  if (existingPlayer) {
+    return { error: null };
+  }
+
   const { error: playerError } = await supabase.from("room_players").upsert(
     {
       room_id: roomId,

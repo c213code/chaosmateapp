@@ -56,6 +56,7 @@ export default function VariantChessGame({
   profile,
   setProfile,
   onlineRoomId,
+  onlinePlayerColor,
   aiOpponent = false,
 }: {
   mode: Exclude<GameMode, "classic-ai" | "online">;
@@ -63,6 +64,7 @@ export default function VariantChessGame({
   profile: Profile;
   setProfile: (profile: Profile | null) => void;
   onlineRoomId?: string;
+  onlinePlayerColor?: Color;
   aiOpponent?: boolean;
 }) {
   const [fen, setFen] = useState(START_FEN);
@@ -99,7 +101,9 @@ export default function VariantChessGame({
   const queenThreat = getQueenThreat(game, turn);
   const hiddenSquares = mode === "fog" ? getHiddenSquares(game, turn) : [];
   const playerColor = mode === "switch" ? switchControl : "w";
-  const isPlayerTurn = !aiOpponent || turn === playerColor;
+  const controlledColor = onlinePlayerColor || playerColor;
+  const mustControlSpecificColor = Boolean(onlinePlayerColor || aiOpponent || mode === "switch");
+  const isPlayerTurn = onlinePlayerColor ? turn === onlinePlayerColor : !aiOpponent || turn === playerColor;
   const movableSquares =
     result || aiThinking || !isPlayerTurn ? [] : getMovableSquares(game, turn).filter((square) => canMoveSquare(game, square, mode, teamSeat));
   const gameStatus = result ? "finished" : game.isCheck() ? "check" : gameId ? "playing" : "idle";
@@ -126,6 +130,13 @@ export default function VariantChessGame({
       setSelected(null);
     }
   }, [fen, game, mode, selected, teamSeat]);
+
+  useEffect(() => {
+    if (onlineRoomId) {
+      setGameId(`online-${onlineRoomId}`);
+      setMessage(onlinePlayerColor ? `Online room ready. You play ${onlinePlayerColor === "w" ? "White" : "Black"}.` : "Join the room to play.");
+    }
+  }, [onlinePlayerColor, onlineRoomId]);
 
   useEffect(() => {
     const client = supabase;
@@ -266,8 +277,32 @@ export default function VariantChessGame({
     setMessage(`${modeCopy[mode].title} started. ${aiOpponent ? "You play White, AI replies automatically." : "White to move."}`);
 
     if (onlineRoomId) {
+      if (onlinePlayerColor && onlinePlayerColor !== "w") {
+        setMessage("Only the room creator playing White can restart the online board.");
+        return;
+      }
+
+      if (!onlinePlayerColor) {
+        setMessage("Join the room before starting the online board.");
+        return;
+      }
+
       setGameId(`online-${onlineRoomId}`);
       setMessage(`${modeCopy[mode].title} online room started. White to move.`);
+      if (supabase) {
+        await supabase
+          .from("game_rooms")
+          .update({
+            fen: next.fen(),
+            moves_pgn: "",
+            moves_san: "",
+            result: null,
+            status: "playing",
+            started_at: new Date().toISOString(),
+            ended_at: null,
+          })
+          .eq("id", onlineRoomId);
+      }
       return;
     }
 
@@ -334,7 +369,7 @@ export default function VariantChessGame({
 
   function playMove(from: Square, to: Square, promotionPiece: PieceSymbol = "q", fromAI = false) {
     const piece = game.get(from);
-    if (!piece || (!fromAI && (aiOpponent && !isPlayerTurn)) || (!fromAI && !canMoveSquare(game, from, mode, teamSeat))) {
+    if (!piece || (!fromAI && !isPlayerTurn) || (!fromAI && mustControlSpecificColor && piece.color !== controlledColor) || (!fromAI && !canMoveSquare(game, from, mode, teamSeat))) {
       setSelected(null);
       return false;
     }

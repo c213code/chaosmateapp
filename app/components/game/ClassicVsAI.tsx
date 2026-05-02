@@ -47,6 +47,7 @@ export default function ClassicVsAI({
   const [aiThinking, setAiThinking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("Choose difficulty and start a new Classic vs AI game.");
+  const [tableTalk, setTableTalk] = useState("Use emotes after buying packs in the shop.");
   const [result, setResult] = useState<GameOutcome | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
@@ -464,6 +465,17 @@ export default function ClassicVsAI({
               Подсвеченные фигуры могут ходить сейчас. Нажми на любую из них, чтобы увидеть конкретные клетки.
             </p>
           )}
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/38">Table talk</p>
+            <p className="mt-2 min-h-6 text-sm font-bold text-[#f7d96b]">{tableTalk}</p>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {["GG", "Nice move", "🔥"].map((item) => (
+                <button key={item} onClick={() => setTableTalk(item)} className="rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm font-bold text-white/70 hover:border-[#d4af37]/45 hover:text-white">
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
           <button onClick={resign} className="mt-3 w-full rounded-md border border-red-400/35 px-4 py-3 font-black text-red-200 hover:bg-red-400/10">
             Resign
           </button>

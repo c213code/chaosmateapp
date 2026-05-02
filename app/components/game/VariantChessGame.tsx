@@ -72,6 +72,7 @@ export default function VariantChessGame({
   const [result, setResult] = useState<Outcome | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [message, setMessage] = useState("Press New Game to start.");
+  const [tableTalk, setTableTalk] = useState("Unlock more emotes in the shop.");
   const [orientation, setOrientation] = useState<Color>("w");
   const [switchCountdown, setSwitchCountdown] = useState(() => randomSwitchCountdown());
   const [switching, setSwitching] = useState(0);
@@ -662,6 +663,17 @@ export default function VariantChessGame({
           {!selected && movableSquares.length > 0 && <p className="mt-3 text-xs leading-5 text-white/50">Подсвеченные фигуры могут ходить. Нажми на фигуру, потом на зеленую клетку.</p>}
           {aiOpponent && !isPlayerTurn && !result && <p className="mt-3 text-xs leading-5 text-[#86efac]">Сейчас ход AI. Доска заблокирована до ответа.</p>}
           {queenThreat && <p className="mt-3 rounded-md border border-amber-300/35 bg-amber-300/12 p-3 text-sm text-amber-100">Queen threat: {queenThreat.attackers.join(", ")} attacking {queenThreat.queenSquare}.</p>}
+          <div className="mt-4 rounded-md border border-white/10 bg-white/5 p-3">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/38">Table talk</p>
+            <p className="mt-2 min-h-6 text-sm font-bold text-[#f7d96b]">{tableTalk}</p>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {["GG", "No way", "⚡"].map((item) => (
+                <button key={item} onClick={() => setTableTalk(item)} className="rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm font-bold text-white/70 hover:border-[#d4af37]/45 hover:text-white">
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <button onClick={() => finalizeGame("draw")} disabled={!gameId || Boolean(result)} className="rounded-md border border-[#d4af37]/45 px-3 py-2 font-bold text-[#f7d96b] disabled:opacity-40">
               Draw

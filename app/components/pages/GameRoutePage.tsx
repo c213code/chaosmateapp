@@ -4,6 +4,7 @@ import { useAuthProfile } from "@/app/components/auth/useAuthProfile";
 import AuthPage from "@/app/components/pages/AuthPage";
 import ClassicVsAI from "@/app/components/game/ClassicVsAI";
 import VariantChessGame from "@/app/components/game/VariantChessGame";
+import ThemeToggle from "@/app/components/ThemeToggle";
 import type { GameMode } from "@/app/lib/chess-platform";
 
 export default function GameRoutePage({ mode }: { mode: GameMode }) {
@@ -51,6 +52,7 @@ export default function GameRoutePage({ mode }: { mode: GameMode }) {
             </div>
           </a>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <span className="hidden rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/60 sm:inline">
               ELO {Number(profile.elo?.classic ?? 1200)}
             </span>

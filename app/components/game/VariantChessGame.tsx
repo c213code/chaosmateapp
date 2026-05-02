@@ -75,7 +75,7 @@ export default function VariantChessGame({
   const [gameId, setGameId] = useState<string | null>(null);
   const [result, setResult] = useState<Outcome | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const [message, setMessage] = useState("Press New Game to start.");
+  const [message, setMessage] = useState("Press Start to begin.");
   const [tableTalk, setTableTalk] = useState("Unlock more emotes in the shop.");
   const [inventory, setInventory] = useState<InventoryState>(() => loadInventory(profile.id));
   const [orientation, setOrientation] = useState<Color>("w");
@@ -319,7 +319,7 @@ export default function VariantChessGame({
     setWhiteMs(speedPreset === "bullet" ? 30000 : 180000);
     setBlackMs(speedPreset === "bullet" ? 30000 : 180000);
     setGameId(`local-${mode}`);
-    setMessage(`${modeCopy[mode].title} started. ${aiOpponent ? "You play White, AI replies automatically." : "White to move."}`);
+    setMessage(`${modeCopy[mode].title} started. ${mode === "team" ? "White Team Player 1 to move." : aiOpponent ? "You play White, AI replies automatically." : "White to move."}`);
 
     if (onlineRoomId) {
       if (onlinePlayerColor && onlinePlayerColor !== "w") {
@@ -500,9 +500,12 @@ export default function VariantChessGame({
     }
 
     if (mode === "team") {
-      const suggestedSeat = nextSeat(nextTurn);
+      const suggestedSeat = nextSeatInTeamOrder(teamSeat);
+      const forcedFen = forceFenTurn(nextFen, teamSeatColor(suggestedSeat));
+      nextGame = new Chess(forcedFen);
+      nextFen = forcedFen;
       setTeamSeat(suggestedSeat);
-      nextMessage = `${nextTurn === "w" ? "White" : "Black"} to move. Pick Player A or B, then move only that seat's pieces.`;
+      nextMessage = `${teamSeatTitle(suggestedSeat)} to move. Turn order is W1 → W2 → B1 → B2.`;
     }
 
     if (aiOpponent && !nextGame.isGameOver()) {
@@ -679,19 +682,12 @@ export default function VariantChessGame({
                 </select>
               )}
               {mode === "team" && (
-                <select
-                  value={teamSeat}
-                  onChange={(event) => setTeamSeat(event.target.value as TeamSeat)}
-                  className="rounded-md border border-white/10 bg-[#0f172a] px-3 py-2 text-sm text-white"
-                >
-                  <option value="white-major">White A: pawns/rooks/queen</option>
-                  <option value="white-minor">White B: knights/bishops/king</option>
-                  <option value="black-major">Black A: pawns/rooks/queen</option>
-                  <option value="black-minor">Black B: knights/bishops/king</option>
-                </select>
+                <span className="rounded-md border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-2 text-sm font-black text-[#f7d96b]">
+                  {teamSeatTitle(teamSeat)}
+                </span>
               )}
               <button onClick={startGame} className="cm-button px-4 py-2 text-sm font-black">
-                New Game
+                Start
               </button>
               {gameStatus === "playing" || gameStatus === "check" ? (
                 <button onClick={backHomeDuringGame} className="rounded-md border border-red-400/35 px-4 py-2 text-sm font-black text-red-200 hover:bg-red-400/10">
@@ -708,9 +704,9 @@ export default function VariantChessGame({
           </div>
         )}
 
-        {mode === "team" && <TeamGuide currentColor={turn} selectedSeat={teamSeat} onSeat={setTeamSeat} />}
+        {mode === "team" && <TeamGuide currentColor={turn} selectedSeat={teamSeat} />}
 
-        <div className="relative mx-auto w-[min(92vw,760px)]">
+        <div className={`relative mx-auto ${mode === "team" ? "w-[min(96vw,960px)]" : "w-[min(92vw,760px)]"}`}>
           {switching > 0 && (
             <div className="absolute inset-0 z-30 grid place-items-center rounded-[28px] bg-black/65 backdrop-blur-md">
               <div className="switch-pulse text-center">
@@ -848,7 +844,7 @@ export default function VariantChessGame({
             <p className="mt-3 text-sm text-white/60">Saved with final FEN, PGN, SAN move list, ELO and coins.</p>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <button type="button" onClick={startGame} className="rounded-md border border-white/10 px-4 py-3 font-black text-white/72 hover:text-white">
-                Play Again
+                Start Again
               </button>
               <button type="button" onClick={() => setShowResult(false)} className="cm-button px-4 py-3 font-black">
                 Review Board
@@ -873,6 +869,38 @@ function canMoveSquare(game: Chess, square: Square, mode: GameMode, teamSeat: Te
   }
 
   return isControlledBySeat(piece.type, piece.color, teamSeat);
+}
+
+function nextSeatInTeamOrder(current: TeamSeat): TeamSeat {
+  const order: Record<TeamSeat, TeamSeat> = {
+    "white-major": "white-minor",
+    "white-minor": "black-major",
+    "black-major": "black-minor",
+    "black-minor": "white-major",
+  };
+
+  return order[current];
+}
+
+function teamSeatColor(seat: TeamSeat): Color {
+  return seat.startsWith("white") ? "w" : "b";
+}
+
+function teamSeatTitle(seat: TeamSeat) {
+  const labels: Record<TeamSeat, string> = {
+    "white-major": "White Team - Player 1",
+    "white-minor": "White Team - Player 2",
+    "black-major": "Black Team - Player 1",
+    "black-minor": "Black Team - Player 2",
+  };
+
+  return labels[seat];
+}
+
+function forceFenTurn(fen: string, color: Color) {
+  const parts = fen.split(" ");
+  parts[1] = color;
+  return parts.join(" ");
 }
 
 function chooseAiMove(game: Chess) {
@@ -1053,11 +1081,9 @@ function MoveRow({ index, white, black, active = false }: { index: number; white
 function TeamGuide({
   currentColor,
   selectedSeat,
-  onSeat,
 }: {
   currentColor: Color;
   selectedSeat: TeamSeat;
-  onSeat: (seat: TeamSeat) => void;
 }) {
   const seats: Array<{ seat: TeamSeat; team: Color; title: string; pieces: string; controls: string }> = [
     { seat: "white-major", team: "w", title: "White A", pieces: "♙ ♖ ♕", controls: "Pawns, Rooks, Queen" },
@@ -1071,7 +1097,7 @@ function TeamGuide({
       <div className="mb-3">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#d4af37]">2v2 Team Control</p>
         <p className="mt-1 text-sm text-white/55">
-          Current side: {currentColor === "w" ? "White" : "Black"}. Choose Player A or B for that side, then move only the highlighted pieces.
+          Current side: {currentColor === "w" ? "White" : "Black"}. Fixed order: White Player 1, White Player 2, Black Player 1, Black Player 2.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -1082,8 +1108,7 @@ function TeamGuide({
           return (
             <button
               key={item.seat}
-              onClick={() => onSeat(item.seat)}
-              disabled={!available}
+              disabled
               className={`rounded-md border p-3 text-left transition ${
                 active
                   ? "border-[#d4af37] bg-[#d4af37]/18"

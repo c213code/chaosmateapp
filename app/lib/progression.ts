@@ -52,5 +52,8 @@ export function saveInventory(userId: string, next: InventoryState) {
 
 export function applyTheme(theme: "dark" | "light") {
   document.documentElement.dataset.theme = theme;
+  document.documentElement.classList.toggle("dark", theme === "dark");
   document.documentElement.classList.toggle("cm-light", theme === "light");
+  window.localStorage.setItem("chaosmate-theme", theme);
+  window.localStorage.setItem("theme", theme);
 }

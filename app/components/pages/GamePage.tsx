@@ -3,6 +3,7 @@
 import { leaderboard } from "@/app/lib/chess-platform";
 import { signOut } from "@/app/lib/supabase";
 import type { ChaosMateUser, Profile } from "@/app/lib/types";
+import ThemeToggle from "@/app/components/ThemeToggle";
 
 type GamePageProps = {
   user: ChaosMateUser;
@@ -94,6 +95,7 @@ export default function GamePage({ profile }: GamePageProps) {
             </div>
           </a>
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <div className="text-right">
               <p className="text-sm text-white/45">Logged in as</p>
               <p className="font-semibold">{profile.username}</p>

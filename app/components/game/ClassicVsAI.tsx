@@ -11,6 +11,11 @@ import { applyTheme, loadInventory, type InventoryState } from "@/app/lib/progre
 
 type PromotionState = { from: Square; to: Square } | null;
 type GameOutcome = "white_win" | "black_win" | "draw" | "resigned";
+type AiMoveAdvice = {
+  topMoves: Array<{ move: string; notation: string; evaluation: number }>;
+  explanation: string;
+  aiMove?: string;
+};
 
 const aiEloByDifficulty: Record<Difficulty, number> = {
   Easy: 850,
@@ -54,9 +59,12 @@ export default function ClassicVsAI({
   const [showResult, setShowResult] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
   const [reviewPly, setReviewPly] = useState<number | null>(null);
+  const [aiAdvice, setAiAdvice] = useState<AiMoveAdvice | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
   const engineRef = useRef<Worker | null>(null);
   const finalizedRef = useRef(false);
   const aiRequestFenRef = useRef<string | null>(null);
+  const analysisTokenRef = useRef(0);
 
   const game = useMemo(() => new Chess(fen), [fen]);
   const boardGame = useMemo(() => getBoardGame(fen, history, reviewPly), [fen, history, reviewPly]);
@@ -170,6 +178,8 @@ export default function ClassicVsAI({
     setShowResult(false);
     setReviewMode(false);
     setReviewPly(null);
+    setAiAdvice(null);
+    setAnalysisLoading(false);
     setGameId("local-classic");
     setMessage("Your move. You play White.");
 
@@ -272,6 +282,36 @@ export default function ClassicVsAI({
       finalizeGame(outcome, moveResult.game, moveResult.history);
     }
   }
+
+  useEffect(() => {
+    if (!gameId || result || !history.length) {
+      return;
+    }
+
+    const token = analysisTokenRef.current + 1;
+    analysisTokenRef.current = token;
+    const currentFen = fen;
+    const lastMoveForAnalysis = history.at(-1);
+    const aiMoveSan = lastMoveForAnalysis?.color === "b" ? lastMoveForAnalysis.san : undefined;
+
+    async function analyzePosition() {
+      setAnalysisLoading(true);
+      try {
+        const advice = await analyzeFenWithStockfish(currentFen, aiMoveSan);
+        if (analysisTokenRef.current === token) {
+          setAiAdvice(advice);
+        }
+      } catch (error) {
+        console.error("AI analysis failed:", error);
+      } finally {
+        if (analysisTokenRef.current === token) {
+          setAnalysisLoading(false);
+        }
+      }
+    }
+
+    void analyzePosition();
+  }, [fen, gameId, history, result]);
 
   async function persistGame(nextGame: Chess, nextHistory: Move[], status = "active", outcome?: GameOutcome) {
     if (!supabase || !gameId || gameId === "local-classic") {
@@ -410,7 +450,7 @@ export default function ClassicVsAI({
                 </button>
               ))}
               <button onClick={() => startGame()} className="rounded-md bg-[#c9a227] px-4 py-2 text-sm font-black text-black">
-                New Game
+                Start
               </button>
               {gameStatus === "playing" || gameStatus === "check" ? (
                 <button onClick={backHomeDuringGame} className="rounded-md border border-red-400/35 px-4 py-2 text-sm font-black text-red-200 hover:bg-red-400/10">
@@ -496,6 +536,27 @@ export default function ClassicVsAI({
               Queen threat: {queenThreat.attackers.join(", ")} attacking {queenThreat.queenSquare}.
             </div>
           )}
+          <div className="mt-3 rounded-2xl border border-[#d4af37]/35 bg-[#d4af37]/10 p-4">
+            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#f7d96b]">AI Analysis</h3>
+            {analysisLoading && <p className="mt-3 text-sm text-white/55">Stockfish is evaluating the current position...</p>}
+            {!analysisLoading && aiAdvice ? (
+              <div className="mt-3 space-y-2">
+                {aiAdvice.topMoves.map((move, index) => (
+                  <div key={`${move.move}-${index}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/18 px-3 py-2 text-sm">
+                    <span className="font-bold text-white">
+                      <span className="mr-2 text-[#f7d96b]">#{index + 1}</span>
+                      {move.notation}
+                    </span>
+                    <span className="font-mono text-white/50">{move.evaluation > 0 ? "+" : ""}{move.evaluation.toFixed(2)}</span>
+                  </div>
+                ))}
+                <p className="pt-1 text-xs leading-5 text-white/58">{aiAdvice.explanation}</p>
+                {aiAdvice.aiMove && <p className="text-xs leading-5 text-[#f7d96b]/80">AI chose: {aiAdvice.aiMove}. Stockfish keeps this because it preserves the strongest evaluated line from the resulting position.</p>}
+              </div>
+            ) : !analysisLoading ? (
+              <p className="mt-3 text-sm text-white/45">Start and make a move to get real Stockfish position advice.</p>
+            ) : null}
+          </div>
           {game.isCheck() && !result && (
             <div className="mt-3 rounded-2xl border border-red-400/35 bg-red-500/12 p-3 text-sm font-bold text-red-100">
               Check warning: {game.turn() === "w" ? "your" : "Stockfish"} king is under attack.
@@ -585,7 +646,7 @@ export default function ClassicVsAI({
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <button type="button" onClick={() => startGame()} className="rounded-md border border-white/10 px-5 py-3 font-black text-white/72 hover:text-white">
-                Play Again
+                Start Again
               </button>
               <button type="button" onClick={reviewBoard} className="rounded-md bg-[#c9a227] px-5 py-3 font-black text-black">
                 Review Moves
@@ -629,6 +690,77 @@ function getBoardGame(liveFen: string, history: Move[], ply: number | null) {
 
 function replayMove(game: Chess, move: Move) {
   game.move(move.promotion ? { from: move.from, to: move.to, promotion: move.promotion } : { from: move.from, to: move.to });
+}
+
+async function analyzeFenWithStockfish(fen: string, aiMove?: string): Promise<AiMoveAdvice> {
+  const chess = new Chess(fen);
+  const sideToMove = chess.turn();
+  const legalMoves = chess.moves({ verbose: true });
+
+  if (!legalMoves.length) {
+    return {
+      topMoves: [],
+      explanation: "No legal moves are available in this position.",
+      aiMove,
+    };
+  }
+
+  const evaluations: AiMoveAdvice["topMoves"] = [];
+
+  for (const move of legalMoves) {
+    const copy = new Chess(fen);
+    copy.move(move.promotion ? { from: move.from, to: move.to, promotion: move.promotion } : { from: move.from, to: move.to });
+    const raw = await evaluatePositionWithStockfish(copy.fen());
+    const normalized = -raw;
+    evaluations.push({
+      move: `${move.from}-${move.to}`,
+      notation: move.san,
+      evaluation: sideToMove === "w" ? normalized : -normalized,
+    });
+  }
+
+  const topMoves = evaluations.sort((a, b) => b.evaluation - a.evaluation).slice(0, 3);
+
+  return {
+    topMoves,
+    aiMove,
+    explanation: `Best moves for ${sideToMove === "w" ? "White" : "Black"}: ${topMoves.map((move) => move.notation).join(", ")}.`,
+  };
+}
+
+function evaluatePositionWithStockfish(fen: string): Promise<number> {
+  return new Promise((resolve) => {
+    const worker = new Worker("/stockfish/stockfish-18-lite-single.js");
+    let latestScore = 0;
+    const finish = window.setTimeout(() => {
+      worker.terminate();
+      resolve(latestScore / 100);
+    }, 650);
+
+    worker.onmessage = (event: MessageEvent<string>) => {
+      const text = event.data;
+      const cp = text.match(/score cp (-?\d+)/);
+      const mate = text.match(/score mate (-?\d+)/);
+
+      if (cp) {
+        latestScore = Number(cp[1]);
+      }
+
+      if (mate) {
+        latestScore = Number(mate[1]) > 0 ? 10000 : -10000;
+      }
+
+      if (text.startsWith("bestmove")) {
+        window.clearTimeout(finish);
+        worker.terminate();
+        resolve(latestScore / 100);
+      }
+    };
+
+    worker.postMessage("uci");
+    worker.postMessage(`position fen ${fen}`);
+    worker.postMessage("go depth 3");
+  });
 }
 
 function buildCoachReport(history: Move[], result: GameOutcome | null) {

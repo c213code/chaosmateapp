@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthProfile } from "@/app/components/auth/useAuthProfile";
 import AuthPage from "@/app/components/pages/AuthPage";
+import ThemeToggle from "@/app/components/ThemeToggle";
 import { kazakhstanCities, leaderboard } from "@/app/lib/chess-platform";
 import { supabase } from "@/app/lib/supabase";
 import type { Profile } from "@/app/lib/types";
@@ -29,24 +31,24 @@ type GameHistoryRow = {
 };
 
 const pieceSkins = [
-  { id: "classic" as Skin, name: "Classic", price: 0, preview: "♔♞", visual: "classic", body: "Clean tournament pieces with premium shadows." },
-  { id: "neon" as Skin, name: "Neon", price: 320, preview: "♕♘", visual: "neon", body: "Glowing cyber pieces for chaotic night matches." },
-  { id: "gold" as Skin, name: "Gold", price: 520, preview: "♛♞", visual: "gold", body: "Metallic gold pieces with ranked-match energy.", badge: "popular" },
-  { id: "wood" as Skin, name: "Wood", price: 420, preview: "♜♟", visual: "wood", body: "Warm carved pieces for classic board lovers." },
+  { id: "classic" as Skin, name: "Classic", price: 0, preview: "♔♞", visual: "classic", body: "Clean tournament pieces with premium shadows.", checkoutId: null },
+  { id: "neon" as Skin, name: "Neon", price: 320, preview: "♕♘", visual: "neon", body: "Glowing cyber pieces for chaotic night matches.", checkoutId: "neon-skin" },
+  { id: "gold" as Skin, name: "Gold", price: 520, preview: "♛♞", visual: "gold", body: "Metallic gold pieces with ranked-match energy.", badge: "popular", checkoutId: "gold-skin" },
+  { id: "wood" as Skin, name: "Wood", price: 420, preview: "♜♟", visual: "wood", body: "Warm carved pieces for classic board lovers.", checkoutId: "wood-skin" },
 ] as const;
 
 const boardThemes = [
-  { id: "royal-wood" as BoardTheme, name: "Royal Wood", price: 0, light: "#e8dcc4", dark: "#a97b59", visual: "royal", body: "Default premium wood board for every mode." },
-  { id: "chesscom-green" as BoardTheme, name: "Chess.com Green", price: 260, light: "#eeeed2", dark: "#769656", visual: "chesscom", body: "Clean green tournament board inspired by chess.com.", badge: "new" },
-  { id: "midnight-glass" as BoardTheme, name: "Midnight Glass", price: 380, light: "#c7d2fe", dark: "#111827", visual: "midnight", body: "Deep blue glass board with sharp contrast." },
-  { id: "emerald-club" as BoardTheme, name: "Emerald Club", price: 460, light: "#d1fae5", dark: "#047857", visual: "emerald", body: "Green club theme built for long sessions.", badge: "best value" },
-  { id: "carbon-arena" as BoardTheme, name: "Carbon Arena", price: 560, light: "#d4d4d8", dark: "#27272a", visual: "carbon", body: "Matte black tactical board for ranked grinds." },
+  { id: "royal-wood" as BoardTheme, name: "Royal Wood", price: 0, light: "#e8dcc4", dark: "#a97b59", visual: "royal", body: "Default premium wood board for every mode.", checkoutId: null },
+  { id: "chesscom-green" as BoardTheme, name: "Chess.com Green", price: 260, light: "#eeeed2", dark: "#769656", visual: "chesscom", body: "Clean green tournament board inspired by chess.com.", badge: "new", checkoutId: "chesscom-board" },
+  { id: "midnight-glass" as BoardTheme, name: "Midnight Glass", price: 380, light: "#c7d2fe", dark: "#111827", visual: "midnight", body: "Deep blue glass board with sharp contrast.", checkoutId: "midnight-board" },
+  { id: "emerald-club" as BoardTheme, name: "Emerald Club", price: 460, light: "#d1fae5", dark: "#047857", visual: "emerald", body: "Green club theme built for long sessions.", badge: "best value", checkoutId: "emerald-board" },
+  { id: "carbon-arena" as BoardTheme, name: "Carbon Arena", price: 560, light: "#d4d4d8", dark: "#27272a", visual: "carbon", body: "Matte black tactical board for ranked grinds.", checkoutId: "carbon-board" },
 ];
 
 const emotePacks = [
-  { name: "GG Pack", price: 90, items: ["GG", "Nice move", "Rematch?"], visual: "gg", icon: "GG", body: "Respectful table talk for rematches and clean wins." },
-  { name: "Chaos Reactions", price: 140, items: ["🔥", "⚡", "No way"], visual: "chaos", icon: "⚡", body: "Fast reactions for Switch and Chaos moments." },
-  { name: "Kazakh Hype", price: 160, items: ["Alga!", "Ketti!", "Top move"], visual: "kazakh", icon: "KZ", body: "Local phrases for Kazakhstan leaderboard games." },
+  { name: "GG Pack", price: 90, items: ["GG", "Nice move", "Rematch?"], visual: "gg", icon: "GG", body: "Respectful table talk for rematches and clean wins.", checkoutId: "gg-emotes" },
+  { name: "Chaos Reactions", price: 140, items: ["🔥", "⚡", "No way"], visual: "chaos", icon: "⚡", body: "Fast reactions for Switch and Chaos moments.", checkoutId: "chaos-emotes" },
+  { name: "Kazakh Hype", price: 160, items: ["Alga!", "Ketti!", "Top move"], visual: "kazakh", icon: "KZ", body: "Local phrases for Kazakhstan leaderboard games.", checkoutId: "kazakh-emotes" },
 ];
 
 const coinPacks = [
@@ -63,6 +65,7 @@ const proPlans = [
 ];
 
 export default function GameRouteUtilityPage({ view }: { view: "profile" | "leaderboard" | "shop" }) {
+  const router = useRouter();
   const { user, profile, setProfile, loading, profileReady } = useAuthProfile();
   const [cityFilter, setCityFilter] = useState("All cities");
   const [liveLeaderboard, setLiveLeaderboard] = useState<LeaderboardRow[]>([]);
@@ -206,13 +209,23 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
     setShopMessage(`${label} unlocked.`);
   }
 
-  async function buyCoinPack(coins: number, label: string) {
-    if (!profile) {
-      return;
-    }
+  function checkout(itemId: string) {
+    router.push(`/shop/checkout?itemId=${encodeURIComponent(itemId)}`);
+  }
 
-    await saveProfile({ ...profile, coins: profile.coins + coins });
-    setShopMessage(`${label}: +${coins} coins added. Stripe checkout placeholder.`);
+  async function buyTestItem() {
+    await spendCoins(
+      100,
+      (nextProfile) => {
+        updateInventory({
+          ...(inventory || loadInventory(nextProfile.id)),
+          skins: Array.from(new Set([...(inventory?.skins || ["classic"]), "classic" as Skin])),
+          emotes: Array.from(new Set([...(inventory?.emotes || []), "Test ready"])),
+        });
+        return nextProfile;
+      },
+      "Classic Test Skin",
+    );
   }
 
   async function claimEloReward() {
@@ -252,6 +265,7 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
             ♛ CHAOSMATE
           </a>
           <div className="flex gap-2">
+            <ThemeToggle />
             <a className="rounded-md border border-white/10 px-3 py-2 text-sm text-white/70 hover:text-white" href="/profile">
               Profile
             </a>
@@ -293,7 +307,7 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                   <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#d4af37]">Game history</p>
                   <h2 className="mt-1 text-2xl font-black">Recent games and AI Coach</h2>
                 </div>
-                <a href="/game/classic" className="cm-button px-4 py-2 text-sm font-black">Play new game</a>
+                <a href="/game/classic" className="cm-button px-4 py-2 text-sm font-black">Start game</a>
               </div>
               <div className="mt-5 grid gap-3">
                 {historyLoading ? (
@@ -392,7 +406,7 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                     <h3 className="mt-7 text-3xl font-black uppercase text-white">{plan.name}</h3>
                     <p className="mt-2 text-lg font-black text-[#b8ff38]">{plan.price}</p>
                     <p className="mt-2 min-h-16 text-sm leading-6 text-white/58">{plan.body}</p>
-                    <button onClick={() => buyCoinPack(250, `${plan.name} free trial bonus`)} className="mt-4 w-full rounded-xl bg-[#b8ff38] px-4 py-3 font-black text-black hover:brightness-105">
+                    <button onClick={() => checkout(`pro-${plan.name.toLowerCase()}`)} className="mt-4 w-full rounded-xl bg-[#b8ff38] px-4 py-3 font-black text-black hover:brightness-105">
                       Start FREE Trial
                     </button>
                   </div>
@@ -401,6 +415,19 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
             </section>
 
             <ShopSection title="Pass & Coins" subtitle="Your progression and coin purchases, presented as ChaosMate store cards.">
+              <div className="chaos-store-card overflow-hidden">
+                <div className="chaos-store-visual chaos-store-classic">
+                  <span className="absolute left-5 top-5 rounded-full bg-[#b8ff38] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-black">Test item</span>
+                  <span className="text-6xl font-black text-black">♟</span>
+                </div>
+                <StoreBody
+                  title="Classic Test Skin"
+                  body="The only direct coin purchase for QA. Unlocks a test table-talk message."
+                  price="100 coins"
+                  action="Buy test"
+                  onAction={buyTestItem}
+                />
+              </div>
               <div className="chaos-store-card overflow-hidden">
                 <div className="chaos-store-visual chaos-store-pass">
                   <span className="absolute left-5 top-5 rounded-full bg-[#b8ff38] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-black">
@@ -423,20 +450,11 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                       {inventory?.elo1300Claimed ? "Claimed" : "Claim"}
                     </button>
                     <button
-                      onClick={() =>
-                        spendCoins(
-                          700,
-                          (nextProfile) => {
-                            updateInventory({ ...(inventory || loadInventory(nextProfile.id)), hasPass: true });
-                            return nextProfile;
-                          },
-                          "Chaos Pass",
-                        )
-                      }
+                      onClick={() => checkout("chaos-pass")}
                       disabled={inventory?.hasPass}
                       className="rounded-xl border border-[#b8ff38]/45 px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#b8ff38] disabled:opacity-45"
                     >
-                      {inventory?.hasPass ? "Active" : "700 coins"}
+                      {inventory?.hasPass ? "Active" : "Checkout"}
                     </button>
                   </div>
                 </div>
@@ -453,8 +471,8 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                     <p className="mt-2 min-h-12 text-sm leading-6 text-white/55">{pack.body}</p>
                     <div className="mt-5 flex items-center justify-between gap-3">
                       <span className="font-mono text-xl font-black text-white">{pack.price}</span>
-                      <button onClick={() => buyCoinPack(pack.coins, pack.name)} className="rounded-xl bg-[#b8ff38] px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-black">
-                        Buy now
+                      <button onClick={() => checkout(pack.name.toLowerCase().replace(/\s+/g, "-"))} className="rounded-xl bg-[#b8ff38] px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-black">
+                        Checkout
                       </button>
                     </div>
                   </div>
@@ -473,19 +491,14 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                     title={skin.name}
                     body={skin.body}
                     price={skin.price ? `${skin.price} coins` : "Unlocked"}
-                    action={profile.skin_equipped === skin.id ? "Equipped" : inventory?.skins.includes(skin.id) ? "Equip" : "Buy now"}
+                    action={profile.skin_equipped === skin.id ? "Equipped" : inventory?.skins.includes(skin.id) ? "Equip" : "View details"}
                     disabled={profile.skin_equipped === skin.id}
                     onAction={() =>
                       inventory?.skins.includes(skin.id)
                         ? saveProfile({ ...profile, skin_equipped: skin.id })
-                        : spendCoins(
-                            skin.price,
-                            (nextProfile) => {
-                              updateInventory({ ...(inventory || loadInventory(nextProfile.id)), skins: [...(inventory?.skins || ["classic"]), skin.id] });
-                              return { ...nextProfile, skin_equipped: skin.id };
-                            },
-                            `${skin.name} skin`,
-                          )
+                        : skin.checkoutId
+                          ? checkout(skin.checkoutId)
+                          : setShopMessage(`${skin.name} is already unlocked.`)
                     }
                   />
                 </div>
@@ -507,23 +520,14 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                     title={theme.name}
                     body={theme.body}
                     price={theme.price ? `${theme.price} coins` : "Unlocked"}
-                    action={inventory?.equippedBoard === theme.id ? "Equipped" : inventory?.boardThemes.includes(theme.id) ? "Equip" : "Buy now"}
+                    action={inventory?.equippedBoard === theme.id ? "Equipped" : inventory?.boardThemes.includes(theme.id) ? "Equip" : "View details"}
                     disabled={inventory?.equippedBoard === theme.id}
                     onAction={() =>
                       inventory?.boardThemes.includes(theme.id)
                         ? updateInventory({ ...inventory, equippedBoard: theme.id })
-                        : spendCoins(
-                            theme.price,
-                            (nextProfile) => {
-                              updateInventory({
-                                ...(inventory || loadInventory(nextProfile.id)),
-                                boardThemes: [...(inventory?.boardThemes || ["royal-wood"]), theme.id],
-                                equippedBoard: theme.id,
-                              });
-                              return nextProfile;
-                            },
-                            `${theme.name} board theme`,
-                          )
+                        : theme.checkoutId
+                          ? checkout(theme.checkoutId)
+                          : setShopMessage(`${theme.name} is already unlocked.`)
                     }
                   />
                 </div>
@@ -547,22 +551,12 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                     title={pack.name}
                     body={pack.body}
                     price={`${pack.price} coins`}
-                    action={pack.items.every((item) => inventory?.emotes.includes(item)) ? "Owned" : "Buy now"}
+                    action={pack.items.every((item) => inventory?.emotes.includes(item)) ? "Owned" : "View details"}
                     disabled={pack.items.every((item) => inventory?.emotes.includes(item))}
                     onAction={() =>
                       pack.items.every((item) => inventory?.emotes.includes(item))
                         ? setShopMessage(`${pack.name} already owned.`)
-                        : spendCoins(
-                            pack.price,
-                            (nextProfile) => {
-                              updateInventory({
-                                ...(inventory || loadInventory(nextProfile.id)),
-                                emotes: Array.from(new Set([...(inventory?.emotes || []), ...pack.items])),
-                              });
-                              return nextProfile;
-                            },
-                            `${pack.name} emotes`,
-                          )
+                        : checkout(pack.checkoutId)
                     }
                   />
                 </div>

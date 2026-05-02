@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthProfile } from "@/app/components/auth/useAuthProfile";
 import AuthPage from "@/app/components/pages/AuthPage";
 import VariantChessGame from "@/app/components/game/VariantChessGame";
+import ThemeToggle from "@/app/components/ThemeToggle";
 import { getOnlineRoom, joinOnlineRoom, supabase, type OnlineRoom, type RoomPlayer } from "@/app/lib/supabase";
 import { getRoomSocket, normalizeRoomCode, type SocketRoom } from "@/app/lib/socketRooms";
 import type { GameMode } from "@/app/lib/chess-platform";
@@ -157,12 +158,15 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
           <a href="/game/rooms" className="font-black tracking-[0.18em]">
             ♛ ONLINE ROOM
           </a>
-          <button
-            onClick={() => navigator.clipboard?.writeText(shareUrl)}
-            className="rounded-md border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-2 text-sm font-bold text-[#f7d96b]"
-          >
-            Copy Link
-          </button>
+          <div className="flex gap-2">
+            <ThemeToggle />
+            <button
+              onClick={() => navigator.clipboard?.writeText(shareUrl)}
+              className="rounded-md border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-2 text-sm font-bold text-[#f7d96b]"
+            >
+              Copy Link
+            </button>
+          </div>
         </div>
       </nav>
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

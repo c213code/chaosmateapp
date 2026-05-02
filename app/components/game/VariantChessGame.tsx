@@ -883,7 +883,7 @@ function chooseAiMove(game: Chess) {
 
   const mates = moves.filter((move) => {
     const copy = new Chess(game.fen());
-    copy.move({ from: move.from, to: move.to, promotion: move.promotion || "q" });
+    copy.move(move.promotion ? { from: move.from, to: move.to, promotion: move.promotion } : { from: move.from, to: move.to });
     return copy.isCheckmate();
   });
 
@@ -893,7 +893,7 @@ function chooseAiMove(game: Chess) {
 
   const checks = moves.filter((move) => {
     const copy = new Chess(game.fen());
-    copy.move({ from: move.from, to: move.to, promotion: move.promotion || "q" });
+    copy.move(move.promotion ? { from: move.from, to: move.to, promotion: move.promotion } : { from: move.from, to: move.to });
     return copy.isCheck();
   });
 

@@ -600,13 +600,17 @@ export default function ClassicVsAI({
 function replayGame(history: Move[], ply: number | null) {
   if (ply === null) {
     const live = new Chess();
-    history.forEach((move) => live.move({ from: move.from, to: move.to, promotion: move.promotion || "q" }));
+    history.forEach((move) => replayMove(live, move));
     return live;
   }
 
   const review = new Chess();
-  history.slice(0, ply).forEach((move) => review.move({ from: move.from, to: move.to, promotion: move.promotion || "q" }));
+  history.slice(0, ply).forEach((move) => replayMove(review, move));
   return review;
+}
+
+function replayMove(game: Chess, move: Move) {
+  game.move(move.promotion ? { from: move.from, to: move.to, promotion: move.promotion } : { from: move.from, to: move.to });
 }
 
 function buildCoachReport(history: Move[], result: GameOutcome | null) {

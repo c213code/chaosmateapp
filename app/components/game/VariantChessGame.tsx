@@ -101,6 +101,17 @@ export default function VariantChessGame({
   const gameStatus = result ? "finished" : game.isCheck() ? "check" : gameId ? "playing" : "idle";
 
   useEffect(() => {
+    if (!selected) {
+      return;
+    }
+
+    const piece = game.get(selected);
+    if (!piece || piece.color !== game.turn() || !canMoveSquare(game, selected, mode, teamSeat)) {
+      setSelected(null);
+    }
+  }, [fen, game, mode, selected, teamSeat]);
+
+  useEffect(() => {
     const client = supabase;
 
     if (!onlineRoomId || !client) {
@@ -322,7 +333,8 @@ export default function VariantChessGame({
     let nextGame = moveResult.game;
     let nextFen = moveResult.newFen;
     let nextHistory = moveResult.history;
-    let nextMessage = `${nextGame.turn() === "w" ? "White" : "Black"} to move.`;
+    const nextTurn = nextGame.turn();
+    let nextMessage = `${nextTurn === "w" ? "White" : "Black"} to move.`;
     let triggeredSwitch = false;
 
     if (mode === "chaos" && nextHistory.length > 0 && nextHistory.length % 6 === 0) {
@@ -340,6 +352,7 @@ export default function VariantChessGame({
     if (mode === "switch") {
       const nextCountdown = switchCountdown - 1;
       setSwitchCountdown(Math.max(0, nextCountdown));
+      setSwitchControl(nextTurn);
 
       if (nextCountdown <= 0) {
         triggeredSwitch = true;
@@ -349,11 +362,11 @@ export default function VariantChessGame({
           setSwitching((value) => {
             if (value <= 1) {
               window.clearInterval(countdown);
-              setOrientation((current) => (current === "w" ? "b" : "w"));
-              setSwitchControl((current) => (current === "w" ? "b" : "w"));
+              setOrientation(nextTurn);
+              setSwitchControl(nextTurn);
               setTotalSwaps((current) => current + 1);
               setSwitchCountdown(randomSwitchCountdown());
-              setMessage("Sides swapped. Keep playing from the new perspective.");
+              setMessage(`Sides swapped. You now play ${nextTurn === "w" ? "White" : "Black"}.`);
               return 0;
             }
 
@@ -361,16 +374,16 @@ export default function VariantChessGame({
             return value - 1;
           });
         }, 700);
-        nextMessage = "Switch countdown started.";
+        nextMessage = `Switch countdown started. ${nextTurn === "w" ? "White" : "Black"} will control the next move.`;
       }
     } else if (mode === "local") {
-      setOrientation(nextGame.turn());
+      setOrientation(nextTurn);
     }
 
     if (mode === "team") {
-      const suggestedSeat = nextSeat(nextGame.turn());
+      const suggestedSeat = nextSeat(nextTurn);
       setTeamSeat(suggestedSeat);
-      nextMessage = `${nextGame.turn() === "w" ? "White" : "Black"} to move. Pick Player A or B, then move only that seat's pieces.`;
+      nextMessage = `${nextTurn === "w" ? "White" : "Black"} to move. Pick Player A or B, then move only that seat's pieces.`;
     }
 
     if (aiOpponent && !nextGame.isGameOver()) {

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 import { START_FEN } from "@/app/lib/gameLogic";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -236,6 +237,37 @@ export function isMissingTableError(error: unknown) {
     value?.message?.includes("Could not find the table") ||
     value?.message?.includes("schema cache")
   );
+}
+
+export function isForeignKeyError(error: unknown) {
+  const value = error as { code?: string; message?: string };
+  return value?.code === "23503" || Boolean(value?.message?.includes("violates foreign key constraint"));
+}
+
+export async function ensureUserProfileForGames(user: User) {
+  if (!supabase) {
+    return { error: null };
+  }
+
+  const usernameBase = user.user_metadata?.username || user.email?.split("@")[0] || "ChaosPlayer";
+  const username = `${String(usernameBase).replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 18)}_${user.id.slice(0, 6)}`;
+
+  const { error } = await supabase.from("users").upsert(
+    {
+      id: user.id,
+      username,
+      email: user.email || "",
+      city: user.user_metadata?.city || "Almaty",
+      elo: { classic: 1200, switch: 1200, fog: 1200, chaos: 1200, team: 1200, speed: 1200 },
+      coins: 0,
+      skin_equipped: "classic",
+      wins: 0,
+      losses: 0,
+    },
+    { onConflict: "id", ignoreDuplicates: true },
+  );
+
+  return { error };
 }
 
 function demoRooms(): OnlineRoom[] {

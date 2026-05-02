@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Chess, type Color, type Move, type PieceSymbol, type Square } from "chess.js";
 import ChessBoard from "@/app/components/game/ChessBoard";
 import PieceRenderer from "@/app/components/game/PieceRenderer";
-import { getVisionSquares, isControlledBySeat, pieceGlyphs, teleportOpponentPiece, type GameMode, type TeamSeat } from "@/app/lib/chess-platform";
+import { files, isControlledBySeat, pieceGlyphs, teleportOpponentPiece, type GameMode, type TeamSeat } from "@/app/lib/chess-platform";
 import { getGameResult, getMovableSquares, getQueenThreat, makeMove, needsPromotion, START_FEN } from "@/app/lib/gameLogic";
-import { supabase } from "@/app/lib/supabase";
+import { ensureUserProfileForGames, isForeignKeyError, supabase } from "@/app/lib/supabase";
 import type { ChaosMateUser, Profile } from "@/app/lib/types";
 
 type PromotionState = { from: Square; to: Square } | null;
@@ -79,6 +79,7 @@ export default function VariantChessGame({
   const [totalSwaps, setTotalSwaps] = useState(0);
   const [chaosEvent, setChaosEvent] = useState<{ from: Square; to: Square; piece: PieceSymbol } | null>(null);
   const [chaosHistory, setChaosHistory] = useState<Array<{ moveNumber: number; from: Square; to: Square; piece: PieceSymbol }>>([]);
+  const [chaosCountdown, setChaosCountdown] = useState(6);
   const [speedPreset, setSpeedPreset] = useState<"bullet" | "blitz">("blitz");
   const [whiteMs, setWhiteMs] = useState(180000);
   const [blackMs, setBlackMs] = useState(180000);
@@ -243,6 +244,7 @@ export default function VariantChessGame({
     setTotalSwaps(0);
     setChaosEvent(null);
     setChaosHistory([]);
+    setChaosCountdown(6);
     setTeamSeat("white-major");
     setWhiteMs(speedPreset === "bullet" ? 30000 : 180000);
     setBlackMs(speedPreset === "bullet" ? 30000 : 180000);
@@ -259,6 +261,7 @@ export default function VariantChessGame({
       return;
     }
 
+    await ensureUserProfileForGames(user);
     const { data, error } = await supabase
       .from("games")
       .insert({
@@ -275,7 +278,7 @@ export default function VariantChessGame({
       .single();
 
     if (error) {
-      setMessage(error.message);
+      setMessage(isForeignKeyError(error) ? "Database profile is not ready, so this game is running locally." : error.message);
       setGameId(`local-${mode}`);
       return;
     }
@@ -336,15 +339,25 @@ export default function VariantChessGame({
     let nextMessage = `${nextTurn === "w" ? "White" : "Black"} to move.`;
     let triggeredSwitch = false;
 
-    if (mode === "chaos" && nextHistory.length > 0 && nextHistory.length % 6 === 0) {
-      const opponent = nextGame.turn();
-      const event = teleportOpponentPiece(nextGame, opponent);
-      if (event) {
-        setChaosEvent(event);
-        setChaosHistory((current) => [...current, { moveNumber: nextHistory.length, from: event.from, to: event.to, piece: event.piece }]);
-        window.setTimeout(() => setChaosEvent(null), 1200);
-        nextFen = nextGame.fen();
-        nextMessage = `Chaos strike: ${pieceName(event.piece)} teleported ${event.from} to ${event.to}.`;
+    if (mode === "chaos") {
+      const nextChaosCountdown = chaosCountdown - 1;
+
+      if (nextChaosCountdown <= 0) {
+        const opponent = nextGame.turn();
+        const event = teleportOpponentPiece(nextGame, opponent);
+        setChaosCountdown(6);
+
+        if (event) {
+          setChaosEvent(event);
+          setChaosHistory((current) => [...current, { moveNumber: nextHistory.length, from: event.from, to: event.to, piece: event.piece }]);
+          window.setTimeout(() => setChaosEvent(null), 1200);
+          nextFen = nextGame.fen();
+          nextMessage = `Chaos strike: ${pieceName(event.piece)} teleported ${event.from} to ${event.to}.`;
+        } else {
+          nextMessage = "Chaos tried to strike, but no non-king target was available.";
+        }
+      } else {
+        setChaosCountdown(nextChaosCountdown);
       }
     }
 
@@ -619,7 +632,7 @@ export default function VariantChessGame({
             {mode === "switch" && <State label="Next swap" value={`${switchCountdown} moves`} />}
             {mode === "switch" && <State label="Control" value={switchControl === "w" ? "White" : "Black"} />}
             {mode === "switch" && <State label="Swaps" value={totalSwaps} />}
-            {mode === "chaos" && <State label="Chaos" value={`${6 - (history.length % 6 || 0)} moves`} />}
+            {mode === "chaos" && <State label="Chaos" value={`${chaosCountdown} moves`} />}
             {mode === "speed" && (
               <>
                 <State label="White time" value={formatMs(whiteMs)} danger={whiteMs < 10000} />
@@ -743,7 +756,7 @@ function chooseAiMove(game: Chess) {
 }
 
 function getHiddenSquares(game: Chess, color: Color) {
-  const visible = getVisionSquares(game, color);
+  const visible = getAdjacentVisionSquares(game, color);
   const hidden: Square[] = [];
 
   for (let rank = 1; rank <= 8; rank += 1) {
@@ -756,6 +769,36 @@ function getHiddenSquares(game: Chess, color: Color) {
   }
 
   return hidden;
+}
+
+function getAdjacentVisionSquares(game: Chess, color: Color) {
+  const visible = new Set<Square>();
+
+  game
+    .board()
+    .flat()
+    .forEach((piece) => {
+      if (!piece || piece.color !== color) {
+        return;
+      }
+
+      visible.add(piece.square);
+      const fileIndex = files.indexOf(piece.square[0] as (typeof files)[number]);
+      const rankIndex = Number(piece.square[1]) - 1;
+
+      for (let fileOffset = -1; fileOffset <= 1; fileOffset += 1) {
+        for (let rankOffset = -1; rankOffset <= 1; rankOffset += 1) {
+          const nextFile = files[fileIndex + fileOffset];
+          const nextRank = rankIndex + rankOffset + 1;
+
+          if (nextFile && nextRank >= 1 && nextRank <= 8) {
+            visible.add(`${nextFile}${nextRank}` as Square);
+          }
+        }
+      }
+    });
+
+  return visible;
 }
 
 function nextSeat(color: Color): TeamSeat {
@@ -787,7 +830,7 @@ function modeNote(mode: GameMode) {
     return "Switch Places is pass-and-play here: every random interval the orientation flips and players inherit the opposite perspective.";
   }
   if (mode === "fog") {
-    return "Fog hides opponent pieces outside your current legal vision. Your own pieces and legal targets stay readable.";
+    return "Fog hides every square outside a one-cell radius around the current side's pieces. Long-range bishops and rooks do not reveal lanes until pieces move closer.";
   }
   if (mode === "chaos") {
     return "Every sixth move, one non-king opponent piece teleports to a random empty square.";

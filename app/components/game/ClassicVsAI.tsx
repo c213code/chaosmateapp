@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Chess, type Move, type PieceSymbol, type Square } from "chess.js";
 import { calculateElo, pieceGlyphs, type Difficulty } from "@/app/lib/chess-platform";
 import { getGameResult, getMovableSquares, getQueenThreat, makeMove, needsPromotion, START_FEN } from "@/app/lib/gameLogic";
-import { supabase } from "@/app/lib/supabase";
+import { ensureUserProfileForGames, isForeignKeyError, supabase } from "@/app/lib/supabase";
 import type { ChaosMateUser, Profile } from "@/app/lib/types";
 import ChessBoard from "@/app/components/game/ChessBoard";
 
@@ -158,6 +158,7 @@ export default function ClassicVsAI({
     }
 
     setSaving(true);
+    await ensureUserProfileForGames(user);
     const { data, error } = await supabase
       .from("games")
       .insert({
@@ -177,7 +178,7 @@ export default function ClassicVsAI({
     setSaving(false);
 
     if (error) {
-      setMessage(error.message);
+      setMessage(isForeignKeyError(error) ? "Database profile is not ready, so this game is running locally." : error.message);
       setGameId("local-classic");
       return;
     }

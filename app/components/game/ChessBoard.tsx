@@ -63,7 +63,6 @@ export default function ChessBoard({
               {isLegal && <span className="absolute h-4 w-4 rounded-full bg-[#c9a227]/85 shadow-[0_0_18px_rgba(201,162,39,0.8)]" />}
               {isMovable && !selected && <span className="movable-piece-halo" />}
               {piece && !isHidden && <PieceRenderer color={piece.color} type={piece.type as PieceSymbol} landed={isLanding} />}
-              {piece && isHidden && <span className="fog-piece">?</span>}
             </button>
           );
         })}

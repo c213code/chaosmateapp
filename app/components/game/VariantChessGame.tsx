@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Chess, type Color, type Move, type PieceSymbol, type Square } from "chess.js";
 import ChessBoard from "@/app/components/game/ChessBoard";
 import PieceRenderer from "@/app/components/game/PieceRenderer";
-import { getVisionSquares, isControlledBySeat, nextSwitchMove, pieceGlyphs, teleportOpponentPiece, type GameMode, type TeamSeat } from "@/app/lib/chess-platform";
+import { getVisionSquares, isControlledBySeat, pieceGlyphs, teleportOpponentPiece, type GameMode, type TeamSeat } from "@/app/lib/chess-platform";
 import { getGameResult, getMovableSquares, getQueenThreat, makeMove, needsPromotion, START_FEN } from "@/app/lib/gameLogic";
 import { supabase } from "@/app/lib/supabase";
 import type { ChaosMateUser, Profile } from "@/app/lib/types";
@@ -45,6 +45,10 @@ const modeCopy: Record<Exclude<GameMode, "classic-ai" | "online">, { title: stri
   },
 };
 
+function randomSwitchCountdown() {
+  return 5 + Math.floor(Math.random() * 6);
+}
+
 export default function VariantChessGame({
   mode,
   user,
@@ -69,7 +73,7 @@ export default function VariantChessGame({
   const [showResult, setShowResult] = useState(false);
   const [message, setMessage] = useState("Press New Game to start.");
   const [orientation, setOrientation] = useState<Color>("w");
-  const [switchAt, setSwitchAt] = useState(() => nextSwitchMove(0));
+  const [switchCountdown, setSwitchCountdown] = useState(() => randomSwitchCountdown());
   const [switching, setSwitching] = useState(0);
   const [switchControl, setSwitchControl] = useState<Color>("w");
   const [totalSwaps, setTotalSwaps] = useState(0);
@@ -222,7 +226,7 @@ export default function VariantChessGame({
     setAiThinking(false);
     aiFenRef.current = null;
     setOrientation("w");
-    setSwitchAt(nextSwitchMove(0));
+    setSwitchCountdown(randomSwitchCountdown());
     setSwitching(0);
     setSwitchControl("w");
     setTotalSwaps(0);
@@ -333,27 +337,32 @@ export default function VariantChessGame({
       }
     }
 
-    if (mode === "switch" && nextHistory.length === switchAt) {
-      triggeredSwitch = true;
-      setSwitching(3);
-      setMessage("SWITCHING IN 3...");
-      const countdown = window.setInterval(() => {
-        setSwitching((value) => {
-          if (value <= 1) {
-            window.clearInterval(countdown);
-            setOrientation((current) => (current === "w" ? "b" : "w"));
-            setSwitchControl((current) => (current === "w" ? "b" : "w"));
-            setTotalSwaps((current) => current + 1);
-            setSwitchAt(nextSwitchMove(nextHistory.length));
-            setMessage("Sides swapped. Keep playing from the new perspective.");
-            return 0;
-          }
+    if (mode === "switch") {
+      const nextCountdown = switchCountdown - 1;
+      setSwitchCountdown(Math.max(0, nextCountdown));
 
-          setMessage(`SWITCHING IN ${value - 1}...`);
-          return value - 1;
-        });
-      }, 700);
-      nextMessage = "Switch countdown started.";
+      if (nextCountdown <= 0) {
+        triggeredSwitch = true;
+        setSwitching(3);
+        setMessage("SWITCHING IN 3...");
+        const countdown = window.setInterval(() => {
+          setSwitching((value) => {
+            if (value <= 1) {
+              window.clearInterval(countdown);
+              setOrientation((current) => (current === "w" ? "b" : "w"));
+              setSwitchControl((current) => (current === "w" ? "b" : "w"));
+              setTotalSwaps((current) => current + 1);
+              setSwitchCountdown(randomSwitchCountdown());
+              setMessage("Sides swapped. Keep playing from the new perspective.");
+              return 0;
+            }
+
+            setMessage(`SWITCHING IN ${value - 1}...`);
+            return value - 1;
+          });
+        }, 700);
+        nextMessage = "Switch countdown started.";
+      }
     } else if (mode === "local") {
       setOrientation(nextGame.turn());
     }
@@ -595,7 +604,7 @@ export default function VariantChessGame({
             <State label="Moves" value={history.length} />
             {aiOpponent && <State label="Opponent" value={aiThinking ? "AI thinking" : "AI ready"} />}
             {aiOpponent && <State label="You control" value={playerColor === "w" ? "White" : "Black"} />}
-            {mode === "switch" && <State label="Next swap" value={`${Math.max(0, switchAt - history.length)} moves`} />}
+            {mode === "switch" && <State label="Next swap" value={`${switchCountdown} moves`} />}
             {mode === "switch" && <State label="Control" value={switchControl === "w" ? "White" : "Black"} />}
             {mode === "switch" && <State label="Swaps" value={totalSwaps} />}
             {mode === "chaos" && <State label="Chaos" value={`${6 - (history.length % 6 || 0)} moves`} />}

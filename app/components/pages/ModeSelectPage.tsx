@@ -5,19 +5,15 @@ import AuthPage from "@/app/components/pages/AuthPage";
 
 const aiModes = [
   ["Classic", "/game/classic"],
-  ["Switch Places", "/game/switch-places"],
-  ["Fog of War", "/game/fog-of-war"],
-  ["Chaos Mode", "/game/chaos-mode"],
-  ["Speed Chess", "/game/speed-chess"],
 ];
 
 const localModes = [
   ["Classic", "/game/local-multiplayer"],
-  ["Switch Places", "/game/switch-places?play=local"],
+  ["Switch Places", "/game/switch-places"],
   ["2v2 Team", "/game/2v2"],
-  ["Fog of War", "/game/fog-of-war?play=local"],
-  ["Chaos Mode", "/game/chaos-mode?play=local"],
-  ["Speed Chess", "/game/speed-chess?play=local"],
+  ["Fog of War", "/game/fog-of-war"],
+  ["Chaos Mode", "/game/chaos-mode"],
+  ["Speed Chess", "/game/speed-chess"],
 ];
 
 export default function ModeSelectPage() {
@@ -48,7 +44,7 @@ export default function ModeSelectPage() {
         </section>
 
         <section className="grid gap-5 lg:grid-cols-3">
-          <ModeColumn title="Play with AI" icon="🤖" description="Fight Stockfish and save ELO/coins." modes={aiModes} />
+          <ModeColumn title="Play with AI" icon="🤖" description="Only Classic uses the working Stockfish AI." modes={aiModes} />
           <ModeColumn title="Same Device" icon="👥" description="Pass-and-play with friends locally." modes={localModes} />
           <div className="cm-card p-6">
             <div className="text-4xl">🌐</div>

@@ -133,6 +133,16 @@ io.on("connection", (socket) => {
   });
 });
 
+httpServer.on("error", (error) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(`Port ${port} is already in use.`);
+    console.error(`Stop the old server or run with another port: PORT=3011 npm run dev`);
+    process.exit(1);
+  }
+
+  throw error;
+});
+
 httpServer.listen(port, hostname, () => {
   console.log(`ChaosMate ready on http://${hostname}:${port}`);
   console.log(`Backend WebSocket ready on ws://${hostname}:${port}/socket.io`);

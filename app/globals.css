@@ -618,7 +618,11 @@ button:hover .piece-token .piece {
 
 .cm-light body,
 .cm-light .cm-page {
-  background: #eef2ff;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(212, 175, 55, 0.15), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(15, 23, 42, 0.12), transparent 32%),
+    radial-gradient(circle at 46% 92%, rgba(14, 165, 233, 0.12), transparent 30%),
+    linear-gradient(135deg, #d9e1ef 0%, #cfd8e8 48%, #e5e7f0 100%);
   color: #111827;
 }
 
@@ -653,6 +657,40 @@ button:hover .piece-token .piece {
   background: rgba(255, 255, 255, 0.82) !important;
 }
 
+.cm-light .shop-hero-panel,
+.cm-light .chaos-store-card,
+.cm-light .move-history-pro {
+  color: #f8fafc;
+}
+
+.cm-light .shop-hero-panel {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(212, 175, 55, 0.32), transparent 28%),
+    radial-gradient(circle at 92% 12%, rgba(184, 255, 56, 0.12), transparent 30%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(5, 10, 18, 0.94)) !important;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.28) !important;
+}
+
+.cm-light .shop-hero-panel [class*="text-white"],
+.cm-light .chaos-store-card [class*="text-white"],
+.cm-light .move-history-pro [class*="text-white"] {
+  color: #f8fafc !important;
+}
+
+.cm-light .shop-hero-panel [class*="text-white/"],
+.cm-light .chaos-store-card [class*="text-white/"],
+.cm-light .move-history-pro [class*="text-white/"] {
+  color: rgba(248, 250, 252, 0.64) !important;
+}
+
+.cm-light .chaos-store-card {
+  border-color: rgba(15, 23, 42, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025)),
+    rgba(10, 14, 25, 0.92);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+}
+
 .team-board-stage .board-shell {
   padding: clamp(0.5rem, 1.1vw, 0.85rem);
 }
@@ -679,20 +717,21 @@ button:hover .piece-token .piece {
 }
 
 .cm-light .chaos-subscription-panel {
-  border-color: rgba(21, 128, 61, 0.22);
+  border-color: rgba(184, 255, 56, 0.28);
   background:
-    radial-gradient(circle at 12% 8%, rgba(184, 255, 56, 0.24), transparent 34%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(226, 232, 240, 0.88));
-  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.16);
+    radial-gradient(circle at 12% 8%, rgba(184, 255, 56, 0.18), transparent 34%),
+    radial-gradient(circle at 86% 14%, rgba(212, 175, 55, 0.16), transparent 28%),
+    linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(5, 10, 18, 0.95));
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.26);
 }
 
 .cm-light .chaos-subscription-panel [class*="text-white"] {
-  color: #0f172a !important;
+  color: #f8fafc !important;
 }
 
 .cm-light .chaos-subscription-panel [class*="text-white/45"],
 .cm-light .chaos-subscription-panel [class*="text-white/58"] {
-  color: rgba(15, 23, 42, 0.62) !important;
+  color: rgba(248, 250, 252, 0.62) !important;
 }
 
 .chaos-store-card {

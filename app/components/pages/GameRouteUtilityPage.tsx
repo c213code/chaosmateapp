@@ -367,7 +367,7 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
 
         {view === "shop" && (
           <section className="space-y-6">
-            <div className="overflow-hidden rounded-[28px] border border-[#d4af37]/25 bg-[radial-gradient(circle_at_15%_10%,rgba(212,175,55,0.24),transparent_28%),linear-gradient(135deg,rgba(21,27,42,0.96),rgba(6,10,25,0.9))] p-6 shadow-2xl shadow-black/40">
+            <div className="shop-hero-panel overflow-hidden rounded-[28px] border border-[#d4af37]/25 bg-[radial-gradient(circle_at_15%_10%,rgba(212,175,55,0.24),transparent_28%),linear-gradient(135deg,rgba(21,27,42,0.96),rgba(6,10,25,0.9))] p-6 shadow-2xl shadow-black/40">
               <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-end">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.32em] text-[#d4af37]">Premium catalog</p>

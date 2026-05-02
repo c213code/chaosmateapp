@@ -37,6 +37,7 @@ const pieceSkins = [
 
 const boardThemes = [
   { id: "royal-wood" as BoardTheme, name: "Royal Wood", price: 0, light: "#e8dcc4", dark: "#a97b59", visual: "royal", body: "Default premium wood board for every mode." },
+  { id: "chesscom-green" as BoardTheme, name: "Chess.com Green", price: 260, light: "#eeeed2", dark: "#769656", visual: "chesscom", body: "Clean green tournament board inspired by chess.com.", badge: "new" },
   { id: "midnight-glass" as BoardTheme, name: "Midnight Glass", price: 380, light: "#c7d2fe", dark: "#111827", visual: "midnight", body: "Deep blue glass board with sharp contrast." },
   { id: "emerald-club" as BoardTheme, name: "Emerald Club", price: 460, light: "#d1fae5", dark: "#047857", visual: "emerald", body: "Green club theme built for long sessions.", badge: "best value" },
   { id: "carbon-arena" as BoardTheme, name: "Carbon Arena", price: 560, light: "#d4d4d8", dark: "#27272a", visual: "carbon", body: "Matte black tactical board for ranked grinds." },

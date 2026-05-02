@@ -28,6 +28,10 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
   const shareUrl = useMemo(() => (typeof window === "undefined" ? "" : window.location.href), []);
 
   useEffect(() => {
+    if (loading || !user) {
+      return;
+    }
+
     let alive = true;
     const socket = getRoomSocket();
     const normalizedRoomId = normalizeRoomCode(roomId);
@@ -61,7 +65,7 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
 
     socket.on("rooms:update", handleState);
     socket.on("game:state", handleState);
-    socket.emit("rooms:join", { roomId: normalizedRoomId, userId: user?.id }, (response: { room?: SocketRoom; seat?: string; error?: string }) => {
+    socket.emit("rooms:join", { roomId: normalizedRoomId, userId: user.id }, (response: { room?: SocketRoom; seat?: string; error?: string }) => {
       if (!alive) {
         return;
       }
@@ -97,7 +101,7 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
       socket.off("rooms:update", handleState);
       socket.off("game:state", handleState);
     };
-  }, [roomId, user?.id]);
+  }, [loading, roomId, user]);
 
   if (loading) {
     return <main className="cm-page grid min-h-screen place-items-center text-white">Loading online game...</main>;
@@ -140,7 +144,8 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
 
   const activeRoomMode = socketRoom?.gameMode || room?.game_mode || "classic";
   const variantMode = routeModeByRoomMode[activeRoomMode] || "local";
-  const currentSeat = socketSeat || players.find((player) => player.user_id === user.id)?.team || (room?.created_by === user.id ? "white" : null);
+  const socketPlayerSeat = socketRoom?.players?.find((player) => player.userId === user.id)?.seat || null;
+  const currentSeat = socketSeat || socketPlayerSeat || players.find((player) => player.user_id === user.id)?.team || (room?.created_by === user.id ? "white" : null);
   const playerColor = currentSeat?.startsWith("black") ? "b" : currentSeat?.startsWith("white") || room?.created_by === user.id ? "w" : null;
   const joined = Boolean(currentSeat);
   const full = Number(socketRoom?.currentPlayers || room?.current_players || players.length) >= Number(socketRoom?.maxPlayers || room?.max_players || 2);
@@ -182,7 +187,9 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
             {(activeRoomMode === "2v2" ? ["white_a", "white_b", "black_a", "black_b"] : ["white", "black"]).map((seat, index) => (
               <div key={seat} className="rounded-md border border-white/10 bg-black/20 p-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-white/36">{seat.replace("_", " ")}</p>
-                <p className="mt-1 truncate font-bold">{players[index]?.user_id ? `Player ${index + 1}` : "Waiting..."}</p>
+                <p className="mt-1 truncate font-bold">
+                  {socketRoom?.players?.find((player) => player.seat === seat)?.userId || players[index]?.user_id ? `Player ${index + 1}` : "Waiting..."}
+                </p>
               </div>
             ))}
           </div>

@@ -9,6 +9,10 @@ export type SocketRoom = {
   difficulty: string;
   maxPlayers: number;
   currentPlayers: number;
+  players?: Array<{
+    userId: string;
+    seat: string;
+  }>;
   status: "waiting" | "playing" | "finished";
   fen?: string | null;
   movesPgn?: string | null;

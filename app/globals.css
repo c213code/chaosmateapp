@@ -588,6 +588,14 @@ button:hover .piece-token .piece {
   background: linear-gradient(145deg, #dbeafe, #93c5fd 48%, #64748b);
 }
 
+.board-theme-chesscom-green .light-square {
+  background: linear-gradient(145deg, #f7f7df, #eeeed2 52%, #dfddb5);
+}
+
+.board-theme-chesscom-green .dark-square {
+  background: linear-gradient(145deg, #86a965, #769656 52%, #5f7f43);
+}
+
 .board-theme-midnight-glass .dark-square {
   background: linear-gradient(145deg, #1f2937, #0f172a 52%, #020617);
 }
@@ -712,6 +720,12 @@ button:hover .piece-token .piece {
 
 .chaos-store-royal {
   background: repeating-linear-gradient(135deg, #f5f0e8 0 34px, #6dbd45 34px 68px);
+}
+
+.chaos-store-chesscom {
+  background:
+    radial-gradient(circle at 50% 36%, rgba(255, 255, 255, 0.26), transparent 28%),
+    linear-gradient(135deg, #eeeed2 0 50%, #769656 50% 100%);
 }
 
 .chaos-store-midnight {

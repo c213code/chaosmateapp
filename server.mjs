@@ -18,6 +18,10 @@ function publicRoom(room) {
     difficulty: room.difficulty,
     maxPlayers: room.maxPlayers,
     currentPlayers: room.players.length,
+    players: room.players.map((player) => ({
+      userId: player.userId,
+      seat: player.seat,
+    })),
     status: room.status,
     fen: room.fen,
     movesPgn: room.movesPgn,
@@ -83,13 +87,19 @@ io.on("connection", (socket) => {
   socket.on("rooms:join", (payload = {}, callback) => {
     const code = String(payload.roomId || payload.code || "").toUpperCase();
     const room = rooms.get(code);
+    const userId = payload.userId ? String(payload.userId) : null;
 
     if (!room) {
       callback?.({ error: "Room not found" });
       return;
     }
 
-    let player = room.players.find((item) => item.userId === payload.userId);
+    if (!userId) {
+      callback?.({ error: "User is not ready yet. Try again in a second." });
+      return;
+    }
+
+    let player = room.players.find((item) => item.userId === userId);
     if (!player) {
       if (room.players.length >= room.maxPlayers) {
         callback?.({ error: "Room is full" });
@@ -97,7 +107,7 @@ io.on("connection", (socket) => {
       }
 
       const seat = room.gameMode === "2v2" ? ["white_a", "white_b", "black_a", "black_b"][room.players.length] : room.players.length === 0 ? "white" : "black";
-      player = { socketId: socket.id, userId: payload.userId || socket.id, seat };
+      player = { socketId: socket.id, userId, seat };
       room.players.push(player);
     } else {
       player.socketId = socket.id;

@@ -104,7 +104,7 @@ export default function VariantChessGame({
   const playerColor = mode === "switch" ? switchControl : "w";
   const controlledColor = onlinePlayerColor || playerColor;
   const mustControlSpecificColor = Boolean(onlinePlayerColor || aiOpponent || mode === "switch");
-  const isPlayerTurn = onlinePlayerColor ? turn === onlinePlayerColor : !aiOpponent || turn === playerColor;
+  const isPlayerTurn = onlineRoomId ? Boolean(onlinePlayerColor && turn === onlinePlayerColor) : !aiOpponent || turn === playerColor;
   const movableSquares =
     result || aiThinking || !isPlayerTurn ? [] : getMovableSquares(game, turn).filter((square) => canMoveSquare(game, square, mode, teamSeat));
   const gameStatus = result ? "finished" : game.isCheck() ? "check" : gameId ? "playing" : "idle";
@@ -218,6 +218,7 @@ export default function VariantChessGame({
     }
 
     loadOnlineState();
+    const poll = window.setInterval(loadOnlineState, 1500);
 
     const channel = activeClient
       .channel(`game-room-state-${onlineRoomId}`)
@@ -226,6 +227,7 @@ export default function VariantChessGame({
 
     return () => {
       alive = false;
+      window.clearInterval(poll);
       activeClient.removeChannel(channel);
     };
   }, [onlineRoomId]);

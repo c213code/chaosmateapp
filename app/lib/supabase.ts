@@ -20,6 +20,17 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
+export async function signOut() {
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    throw error;
+  }
+}
+
 export function getRoomUrl(roomId: string) {
   if (typeof window === "undefined") {
     return `/game/${roomId}`;
@@ -89,7 +100,7 @@ export async function getOnlineRooms() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return { rooms: demoRooms(), error };
+    return { rooms: demoRooms(), error: isMissingTableError(error) ? null : error };
   }
 
   return { rooms: (data || []) as OnlineRoom[], error: null };
@@ -131,6 +142,10 @@ export async function createOnlineRoom({
     .select("*")
     .single();
 
+  if (error && isMissingTableError(error)) {
+    return { roomId, room: null, error: null };
+  }
+
   if (error) {
     return { roomId, room: null, error };
   }
@@ -150,6 +165,10 @@ export async function joinOnlineRoom(roomId: string, userId: string, team = "bla
   }
 
   const { data: room, error: loadError } = await supabase.from("game_rooms").select("*").eq("id", roomId).maybeSingle();
+
+  if (loadError && isMissingTableError(loadError)) {
+    return { error: null };
+  }
 
   if (loadError) {
     return { error: loadError };
@@ -171,6 +190,10 @@ export async function joinOnlineRoom(roomId: string, userId: string, team = "bla
     },
     { onConflict: "room_id,user_id" },
   );
+
+  if (playerError && isMissingTableError(playerError)) {
+    return { error: null };
+  }
 
   if (playerError) {
     return { error: playerError };
@@ -195,9 +218,24 @@ export async function getOnlineRoom(roomId: string) {
   }
 
   const { data: room, error } = await supabase.from("game_rooms").select("*").eq("id", roomId).maybeSingle();
-  const { data: players } = await supabase.from("room_players").select("*").eq("room_id", roomId).order("joined_at", { ascending: true });
 
-  return { room: room as OnlineRoom | null, players: (players || []) as RoomPlayer[], error };
+  if (error && isMissingTableError(error)) {
+    return { room: demoRooms().find((room) => room.id === roomId) || demoRooms()[0], players: [], error: null };
+  }
+
+  const { data: players, error: playersError } = await supabase.from("room_players").select("*").eq("room_id", roomId).order("joined_at", { ascending: true });
+
+  return { room: room as OnlineRoom | null, players: playersError && isMissingTableError(playersError) ? [] : ((players || []) as RoomPlayer[]), error };
+}
+
+export function isMissingTableError(error: unknown) {
+  const value = error as { code?: string; message?: string };
+  return (
+    value?.code === "42P01" ||
+    value?.code === "PGRST205" ||
+    value?.message?.includes("Could not find the table") ||
+    value?.message?.includes("schema cache")
+  );
 }
 
 function demoRooms(): OnlineRoom[] {

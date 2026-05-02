@@ -1,7 +1,7 @@
 "use client";
 
 import { leaderboard } from "@/app/lib/chess-platform";
-import { supabase } from "@/app/lib/supabase";
+import { signOut } from "@/app/lib/supabase";
 import type { ChaosMateUser, Profile } from "@/app/lib/types";
 
 type GamePageProps = {
@@ -64,7 +64,15 @@ const modes = [
 
 export default function GamePage({ profile }: GamePageProps) {
   async function handleLogout() {
-    await supabase?.auth.signOut();
+    try {
+      await signOut();
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      window.location.href = "/";
+    }
   }
 
   if (!profile) {

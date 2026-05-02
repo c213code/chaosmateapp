@@ -52,6 +52,7 @@ export default function ClassicVsAI({
   const [reviewMode, setReviewMode] = useState(false);
   const engineRef = useRef<Worker | null>(null);
   const finalizedRef = useRef(false);
+  const aiRequestFenRef = useRef<string | null>(null);
 
   const game = useMemo(() => new Chess(fen), [fen]);
   const legalTargets = selected ? game.moves({ square: selected, verbose: true }).map((move) => move.to) : [];
@@ -88,6 +89,8 @@ export default function ClassicVsAI({
       return;
     }
 
+    const requestedFen = game.fen();
+    aiRequestFenRef.current = requestedFen;
     setAiThinking(true);
     setMessage("Stockfish is thinking...");
 
@@ -97,14 +100,19 @@ export default function ClassicVsAI({
       }
 
       const uci = event.data.split(" ")[1];
-      setAiThinking(false);
 
-      if (!uci || uci === "(none)") {
+      if (aiRequestFenRef.current !== requestedFen || game.turn() !== "b" || result || finalizedRef.current) {
         return;
       }
 
+      if (!uci || uci === "(none)") {
+        setAiThinking(false);
+        return;
+      }
+
+      const aiGame = new Chess(requestedFen);
       const moveResult = makeMove(
-        game,
+        aiGame,
         uci.slice(0, 2) as Square,
         uci.slice(2, 4) as Square,
         (uci.slice(4, 5) || "q") as PieceSymbol,
@@ -112,16 +120,18 @@ export default function ClassicVsAI({
 
       if (!moveResult) {
         setMessage(`Stockfish returned illegal move: ${uci}`);
+        setAiThinking(false);
         return;
       }
 
       applyMoveResult(moveResult);
+      setAiThinking(false);
     };
 
     worker.postMessage("uci");
     worker.postMessage(`setoption name Skill Level value ${stockfishSkill[difficulty]}`);
     worker.postMessage("isready");
-    worker.postMessage(`position fen ${game.fen()}`);
+    worker.postMessage(`position fen ${requestedFen}`);
     worker.postMessage(`go movetime ${stockfishMoveTime[difficulty]}`);
     // Stockfish must answer for the exact FEN that triggered this effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,6 +140,8 @@ export default function ClassicVsAI({
   async function startGame(nextDifficulty = difficulty) {
     const next = new Chess();
     finalizedRef.current = false;
+    aiRequestFenRef.current = null;
+    setAiThinking(false);
     setDifficulty(nextDifficulty);
     setFen(next.fen());
     setHistory([]);
@@ -274,6 +286,7 @@ export default function ClassicVsAI({
     }
 
     finalizedRef.current = true;
+    aiRequestFenRef.current = null;
     setResult(outcome);
     setShowResult(true);
     setReviewMode(false);

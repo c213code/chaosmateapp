@@ -69,7 +69,10 @@ export default function VariantChessGame({
   const [orientation, setOrientation] = useState<Color>("w");
   const [switchAt, setSwitchAt] = useState(() => nextSwitchMove(0));
   const [switching, setSwitching] = useState(0);
+  const [switchControl, setSwitchControl] = useState<Color>("w");
+  const [totalSwaps, setTotalSwaps] = useState(0);
   const [chaosEvent, setChaosEvent] = useState<{ from: Square; to: Square; piece: PieceSymbol } | null>(null);
+  const [chaosHistory, setChaosHistory] = useState<Array<{ moveNumber: number; from: Square; to: Square; piece: PieceSymbol }>>([]);
   const [speedPreset, setSpeedPreset] = useState<"bullet" | "blitz">("blitz");
   const [whiteMs, setWhiteMs] = useState(180000);
   const [blackMs, setBlackMs] = useState(180000);
@@ -180,7 +183,10 @@ export default function VariantChessGame({
     setOrientation("w");
     setSwitchAt(nextSwitchMove(0));
     setSwitching(0);
+    setSwitchControl("w");
+    setTotalSwaps(0);
     setChaosEvent(null);
+    setChaosHistory([]);
     setTeamSeat("white-major");
     setWhiteMs(speedPreset === "bullet" ? 30000 : 180000);
     setBlackMs(speedPreset === "bullet" ? 30000 : 180000);
@@ -279,6 +285,7 @@ export default function VariantChessGame({
       const event = teleportOpponentPiece(nextGame, opponent);
       if (event) {
         setChaosEvent(event);
+        setChaosHistory((current) => [...current, { moveNumber: nextHistory.length, from: event.from, to: event.to, piece: event.piece }]);
         window.setTimeout(() => setChaosEvent(null), 1200);
         nextFen = nextGame.fen();
         nextMessage = `Chaos strike: ${pieceName(event.piece)} teleported ${event.from} -> ${event.to}.`;
@@ -294,6 +301,8 @@ export default function VariantChessGame({
           if (value <= 1) {
             window.clearInterval(countdown);
             setOrientation((current) => (current === "w" ? "b" : "w"));
+            setSwitchControl((current) => (current === "w" ? "b" : "w"));
+            setTotalSwaps((current) => current + 1);
             setSwitchAt(nextSwitchMove(nextHistory.length));
             setMessage("Sides swapped. Keep playing from the new perspective.");
             return 0;
@@ -534,6 +543,8 @@ export default function VariantChessGame({
             <State label="Turn" value={turn === "w" ? "White" : "Black"} />
             <State label="Moves" value={history.length} />
             {mode === "switch" && <State label="Next swap" value={`${Math.max(0, switchAt - history.length)} moves`} />}
+            {mode === "switch" && <State label="Control" value={switchControl === "w" ? "White" : "Black"} />}
+            {mode === "switch" && <State label="Swaps" value={totalSwaps} />}
             {mode === "chaos" && <State label="Chaos" value={`${6 - (history.length % 6 || 0)} moves`} />}
             {mode === "speed" && (
               <>
@@ -575,6 +586,16 @@ export default function VariantChessGame({
         <div className="cm-panel p-4">
           <h2 className="text-lg font-bold text-white">Mode Notes</h2>
           <p className="mt-2 text-sm leading-6 text-white/58">{modeNote(mode)}</p>
+          {mode === "chaos" && chaosHistory.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#d4af37]">Chaos Events</p>
+              {chaosHistory.slice(-4).map((event) => (
+                <div key={`${event.moveNumber}-${event.from}-${event.to}`} className="rounded-md border border-cyan-300/20 bg-cyan-300/8 p-2 text-xs text-cyan-100">
+                  Move {event.moveNumber}: {pieceName(event.piece)} {event.from} to {event.to}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </aside>
 

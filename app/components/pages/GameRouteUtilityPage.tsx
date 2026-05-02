@@ -29,29 +29,29 @@ type GameHistoryRow = {
 };
 
 const pieceSkins = [
-  { id: "classic" as Skin, name: "Classic", price: 0, preview: "♔♞", tone: "from-zinc-100 to-zinc-400" },
-  { id: "neon" as Skin, name: "Neon", price: 320, preview: "♕♘", tone: "from-cyan-300 to-fuchsia-500" },
-  { id: "gold" as Skin, name: "Gold", price: 520, preview: "♛♞", tone: "from-[#fff0a3] to-[#b8860b]" },
-  { id: "wood" as Skin, name: "Wood", price: 420, preview: "♜♟", tone: "from-amber-200 to-stone-700" },
+  { id: "classic" as Skin, name: "Classic", price: 0, preview: "♔♞", visual: "classic", body: "Clean tournament pieces with premium shadows." },
+  { id: "neon" as Skin, name: "Neon", price: 320, preview: "♕♘", visual: "neon", body: "Glowing cyber pieces for chaotic night matches." },
+  { id: "gold" as Skin, name: "Gold", price: 520, preview: "♛♞", visual: "gold", body: "Metallic gold pieces with ranked-match energy.", badge: "popular" },
+  { id: "wood" as Skin, name: "Wood", price: 420, preview: "♜♟", visual: "wood", body: "Warm carved pieces for classic board lovers." },
 ] as const;
 
 const boardThemes = [
-  { id: "royal-wood" as BoardTheme, name: "Royal Wood", price: 0, light: "#e8dcc4", dark: "#a97b59" },
-  { id: "midnight-glass" as BoardTheme, name: "Midnight Glass", price: 380, light: "#c7d2fe", dark: "#111827" },
-  { id: "emerald-club" as BoardTheme, name: "Emerald Club", price: 460, light: "#d1fae5", dark: "#047857" },
-  { id: "carbon-arena" as BoardTheme, name: "Carbon Arena", price: 560, light: "#d4d4d8", dark: "#27272a" },
+  { id: "royal-wood" as BoardTheme, name: "Royal Wood", price: 0, light: "#e8dcc4", dark: "#a97b59", visual: "royal", body: "Default premium wood board for every mode." },
+  { id: "midnight-glass" as BoardTheme, name: "Midnight Glass", price: 380, light: "#c7d2fe", dark: "#111827", visual: "midnight", body: "Deep blue glass board with sharp contrast." },
+  { id: "emerald-club" as BoardTheme, name: "Emerald Club", price: 460, light: "#d1fae5", dark: "#047857", visual: "emerald", body: "Green club theme built for long sessions.", badge: "best value" },
+  { id: "carbon-arena" as BoardTheme, name: "Carbon Arena", price: 560, light: "#d4d4d8", dark: "#27272a", visual: "carbon", body: "Matte black tactical board for ranked grinds." },
 ];
 
 const emotePacks = [
-  { name: "GG Pack", price: 90, items: ["GG", "Nice move", "Rematch?"] },
-  { name: "Chaos Reactions", price: 140, items: ["🔥", "⚡", "No way"] },
-  { name: "Kazakh Hype", price: 160, items: ["Alga!", "Ketti!", "Top move"] },
+  { name: "GG Pack", price: 90, items: ["GG", "Nice move", "Rematch?"], visual: "gg", icon: "GG", body: "Respectful table talk for rematches and clean wins." },
+  { name: "Chaos Reactions", price: 140, items: ["🔥", "⚡", "No way"], visual: "chaos", icon: "⚡", body: "Fast reactions for Switch and Chaos moments." },
+  { name: "Kazakh Hype", price: 160, items: ["Alga!", "Ketti!", "Top move"], visual: "kazakh", icon: "KZ", body: "Local phrases for Kazakhstan leaderboard games." },
 ];
 
 const coinPacks = [
-  { name: "Starter Coins", coins: 500, price: "$2.99" },
-  { name: "Club Stack", coins: 1400, price: "$6.99" },
-  { name: "Founder Vault", coins: 3600, price: "$14.99" },
+  { name: "Starter Coins", coins: 500, price: "$2.99", visual: "coins-starter", icon: "+500", body: "A quick boost for first skins and messages." },
+  { name: "Club Stack", coins: 1400, price: "$6.99", visual: "coins-club", icon: "+1400", body: "Enough for pass progress and several cosmetics.", badge: "best value" },
+  { name: "Founder Vault", coins: 3600, price: "$14.99", visual: "coins-vault", icon: "+3600", body: "Big balance for full store exploration." },
 ];
 
 const proPlans = [
@@ -59,15 +59,6 @@ const proPlans = [
   { name: "PLUS", price: "$6.99/month", icon: "♘", body: "More AI hints, faster matchmaking and advanced stats." },
   { name: "PREMIUM", price: "$9.99/month", icon: "♕", body: "Unlimited analysis, opening explorer and bonus coins.", popular: true },
   { name: "PRO", price: "$14.99/month", icon: "♛", body: "Everything included, priority rooms and exclusive content." },
-];
-
-const storeBundles = [
-  { name: "Grandmaster Board", price: "1,800 coins", badge: "Best value", visual: "stripes", icon: "♔", body: "Tournament-style green board for ranked games." },
-  { name: "Plush Pink Pawn", price: "700 coins", visual: "pink", icon: "♙", body: "Soft collector pawn vibe for emotes and profile cards." },
-  { name: "Midnight Chess Hoodie", price: "3,400 coins", badge: "Limited", visual: "dark", icon: "GM", body: "Exclusive cosmetic bundle with midnight profile frame." },
-  { name: "Neon Blitz Clock", price: "900 coins", visual: "teal", icon: "◷", body: "Speed chess timer skin with glowing accents." },
-  { name: "64 Tactics Card Deck", price: "640 coins", visual: "number", icon: "64", body: "Unlock tactical message cards for table talk." },
-  { name: "Crystal Queen Keycap", price: "1,200 coins", visual: "crystal", icon: "♕", body: "Premium queen reaction and profile badge." },
 ];
 
 export default function GameRouteUtilityPage({ view }: { view: "profile" | "leaderboard" | "shop" }) {
@@ -390,19 +381,60 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
               </div>
             </section>
 
-            <ShopSection title="Store Bundles" subtitle="Large premium bundles inspired by esports stores, adapted to ChaosMate cosmetics.">
-              {storeBundles.map((bundle) => (
-                <div key={bundle.name} className="chaos-store-card overflow-hidden">
-                  <div className={`chaos-store-visual chaos-store-${bundle.visual}`}>
-                    {bundle.badge && <span className="absolute left-5 top-5 rounded-full bg-[#b8ff38] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-black">{bundle.badge}</span>}
-                    <span className="text-6xl font-black text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.22)]">{bundle.icon}</span>
+            <ShopSection title="Pass & Coins" subtitle="Your progression and coin purchases, presented as ChaosMate store cards.">
+              <div className="chaos-store-card overflow-hidden">
+                <div className="chaos-store-visual chaos-store-pass">
+                  <span className="absolute left-5 top-5 rounded-full bg-[#b8ff38] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-black">
+                    ELO 1300
+                  </span>
+                  <span className="text-6xl font-black text-white">♛</span>
+                </div>
+                <div className="p-5">
+                  <h3 className="text-2xl font-black text-white">Chaos Pass</h3>
+                  <p className="mt-2 min-h-12 text-sm leading-6 text-white/55">
+                    Free reward gives 20 coins at ELO 1300. Pass owners get 80 coins.
+                  </p>
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <ShopMetric label="ELO" value={Number(profile.elo?.classic ?? 1200)} />
+                    <ShopMetric label="Free" value="20" />
+                    <ShopMetric label="Pass" value="80" />
+                  </div>
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <button onClick={claimEloReward} disabled={inventory?.elo1300Claimed} className="rounded-xl bg-[#b8ff38] px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-black disabled:opacity-45">
+                      {inventory?.elo1300Claimed ? "Claimed" : "Claim"}
+                    </button>
+                    <button
+                      onClick={() =>
+                        spendCoins(
+                          700,
+                          (nextProfile) => {
+                            updateInventory({ ...(inventory || loadInventory(nextProfile.id)), hasPass: true });
+                            return nextProfile;
+                          },
+                          "Chaos Pass",
+                        )
+                      }
+                      disabled={inventory?.hasPass}
+                      className="rounded-xl border border-[#b8ff38]/45 px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#b8ff38] disabled:opacity-45"
+                    >
+                      {inventory?.hasPass ? "Active" : "700 coins"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {coinPacks.map((pack) => (
+                <div key={pack.name} className="chaos-store-card overflow-hidden">
+                  <div className={`chaos-store-visual chaos-store-${pack.visual}`}>
+                    {"badge" in pack && pack.badge && <span className="absolute left-5 top-5 rounded-full bg-[#b8ff38] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-black">{pack.badge}</span>}
+                    <span className="text-6xl font-black text-white">{pack.icon}</span>
                   </div>
                   <div className="p-5">
-                    <h3 className="text-2xl font-black text-white">{bundle.name}</h3>
-                    <p className="mt-2 min-h-12 text-sm leading-6 text-white/55">{bundle.body}</p>
+                    <h3 className="text-2xl font-black text-white">{pack.name}</h3>
+                    <p className="mt-2 min-h-12 text-sm leading-6 text-white/55">{pack.body}</p>
                     <div className="mt-5 flex items-center justify-between gap-3">
-                      <span className="font-mono text-xl font-black text-white">{bundle.price}</span>
-                      <button onClick={() => setShopMessage(`${bundle.name} checkout placeholder opened.`)} className="rounded-xl bg-[#b8ff38] px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-black">
+                      <span className="font-mono text-xl font-black text-white">{pack.price}</span>
+                      <button onClick={() => buyCoinPack(pack.coins, pack.name)} className="rounded-xl bg-[#b8ff38] px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-black">
                         Buy now
                       </button>
                     </div>
@@ -411,66 +443,20 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
               ))}
             </ShopSection>
 
-            <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-              <div className="cm-panel p-5">
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#d4af37]">Chaos Pass</p>
-                <h2 className="mt-2 text-2xl font-black">ELO 1300 milestone</h2>
-                <p className="mt-2 text-sm text-white/55">Free players claim 20 coins at Classic ELO 1300. Pass owners claim 80 coins.</p>
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <ShopMetric label="Your classic ELO" value={Number(profile.elo?.classic ?? 1200)} />
-                  <ShopMetric label="Free reward" value="20 coins" />
-                  <ShopMetric label="Pass reward" value="80 coins" />
-                </div>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <button onClick={claimEloReward} disabled={inventory?.elo1300Claimed} className="cm-button px-4 py-3 font-black disabled:opacity-45">
-                    {inventory?.elo1300Claimed ? "Reward claimed" : "Claim ELO reward"}
-                  </button>
-                  <button
-                    onClick={() =>
-                      spendCoins(
-                        700,
-                        (nextProfile) => {
-                          updateInventory({ ...(inventory || loadInventory(nextProfile.id)), hasPass: true });
-                          return nextProfile;
-                        },
-                        "Chaos Pass",
-                      )
-                    }
-                    disabled={inventory?.hasPass}
-                    className="rounded-md border border-[#d4af37]/45 bg-[#d4af37]/10 px-4 py-3 font-black text-[#f7d96b] disabled:opacity-45"
-                  >
-                    {inventory?.hasPass ? "Pass active" : "Buy Chaos Pass · 700 coins"}
-                  </button>
-                </div>
-              </div>
-
-              <div className="cm-panel p-5">
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#d4af37]">Buy coins</p>
-                <h2 className="mt-2 text-2xl font-black">Coin packs</h2>
-                <div className="mt-4 space-y-3">
-                  {coinPacks.map((pack) => (
-                    <button key={pack.name} onClick={() => buyCoinPack(pack.coins, pack.name)} className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/8 p-4 text-left hover:border-[#d4af37]/45">
-                      <span>
-                        <span className="block font-black">{pack.name}</span>
-                        <span className="text-sm text-white/48">{pack.price} checkout placeholder</span>
-                      </span>
-                      <span className="font-black text-[#f7d96b]">+{pack.coins}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             <ShopSection title="Piece Skins" subtitle="Buy and equip the global piece style used on game boards.">
               {pieceSkins.map((skin) => (
-                <div key={skin.id} className="cm-card overflow-hidden p-5">
-                  <div className={`grid aspect-video place-items-center rounded-xl bg-gradient-to-br ${skin.tone} text-6xl text-black shadow-inner`}>
-                    <span className="drop-shadow-xl">{skin.preview}</span>
+                <div key={skin.id} className="chaos-store-card overflow-hidden">
+                  <div className={`chaos-store-visual chaos-store-${skin.visual}`}>
+                    {"badge" in skin && skin.badge && <span className="absolute left-5 top-5 rounded-full bg-[#b8ff38] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-black">{skin.badge}</span>}
+                    <span className="text-6xl font-black text-white drop-shadow-xl">{skin.preview}</span>
                   </div>
-                  <h3 className="mt-4 text-xl font-black">{skin.name}</h3>
-                  <p className="mt-1 text-sm text-white/48">{skin.price ? `${skin.price} coins` : "Default unlocked"}</p>
-                  <button
-                    onClick={() =>
+                  <StoreBody
+                    title={skin.name}
+                    body={skin.body}
+                    price={skin.price ? `${skin.price} coins` : "Unlocked"}
+                    action={profile.skin_equipped === skin.id ? "Equipped" : inventory?.skins.includes(skin.id) ? "Equip" : "Buy now"}
+                    disabled={profile.skin_equipped === skin.id}
+                    onAction={() =>
                       inventory?.skins.includes(skin.id)
                         ? saveProfile({ ...profile, skin_equipped: skin.id })
                         : spendCoins(
@@ -482,25 +468,29 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                             `${skin.name} skin`,
                           )
                     }
-                    className="cm-button mt-4 w-full px-4 py-3 font-black"
-                  >
-                    {profile.skin_equipped === skin.id ? "Equipped" : inventory?.skins.includes(skin.id) ? "Equip" : skin.price ? "Buy & equip" : "Equip"}
-                  </button>
+                  />
                 </div>
               ))}
             </ShopSection>
 
             <ShopSection title="Board Themes" subtitle="Unlocked board themes are saved and applied inside every game.">
               {boardThemes.map((theme) => (
-                <div key={theme.name} className="cm-card p-5">
-                  <div className="grid aspect-video grid-cols-4 overflow-hidden rounded-xl border border-white/10">
+                <div key={theme.name} className="chaos-store-card overflow-hidden">
+                  <div className={`chaos-store-visual chaos-store-${theme.visual}`}>
+                    {"badge" in theme && theme.badge && <span className="absolute left-5 top-5 rounded-full bg-[#b8ff38] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-black">{theme.badge}</span>}
+                    <div className="grid h-full w-full grid-cols-4">
                     {Array.from({ length: 16 }).map((_, index) => (
                       <span key={index} style={{ background: (index + Math.floor(index / 4)) % 2 ? theme.dark : theme.light }} />
                     ))}
+                    </div>
                   </div>
-                  <h3 className="mt-4 text-xl font-black">{theme.name}</h3>
-                  <button
-                    onClick={() =>
+                  <StoreBody
+                    title={theme.name}
+                    body={theme.body}
+                    price={theme.price ? `${theme.price} coins` : "Unlocked"}
+                    action={inventory?.equippedBoard === theme.id ? "Equipped" : inventory?.boardThemes.includes(theme.id) ? "Equip" : "Buy now"}
+                    disabled={inventory?.equippedBoard === theme.id}
+                    onAction={() =>
                       inventory?.boardThemes.includes(theme.id)
                         ? updateInventory({ ...inventory, equippedBoard: theme.id })
                         : spendCoins(
@@ -516,27 +506,31 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                             `${theme.name} board theme`,
                           )
                     }
-                    className="cm-button mt-4 w-full px-4 py-3 font-black"
-                  >
-                    {inventory?.equippedBoard === theme.id ? "Equipped" : inventory?.boardThemes.includes(theme.id) ? "Equip" : `Unlock · ${theme.price} coins`}
-                  </button>
+                  />
                 </div>
               ))}
             </ShopSection>
 
             <ShopSection title="Messages & Emotes" subtitle="Unlock phrases and reactions for table talk during games.">
               {emotePacks.map((pack) => (
-                <div key={pack.name} className="cm-card p-5">
-                  <div className="flex min-h-28 flex-wrap content-center justify-center gap-2 rounded-xl border border-white/10 bg-black/25 p-4">
+                <div key={pack.name} className="chaos-store-card overflow-hidden">
+                  <div className={`chaos-store-visual chaos-store-${pack.visual}`}>
+                    <span className="text-6xl font-black text-white">{pack.icon}</span>
+                    <div className="absolute bottom-5 flex flex-wrap justify-center gap-2 px-4">
                     {pack.items.map((item) => (
-                      <span key={item} className="rounded-full border border-white/10 bg-white/10 px-3 py-2 text-sm font-black">
+                      <span key={item} className="rounded-full border border-white/10 bg-black/25 px-3 py-2 text-xs font-black text-white">
                         {item}
                       </span>
                     ))}
+                    </div>
                   </div>
-                  <h3 className="mt-4 text-xl font-black">{pack.name}</h3>
-                  <button
-                    onClick={() =>
+                  <StoreBody
+                    title={pack.name}
+                    body={pack.body}
+                    price={`${pack.price} coins`}
+                    action={pack.items.every((item) => inventory?.emotes.includes(item)) ? "Owned" : "Buy now"}
+                    disabled={pack.items.every((item) => inventory?.emotes.includes(item))}
+                    onAction={() =>
                       pack.items.every((item) => inventory?.emotes.includes(item))
                         ? setShopMessage(`${pack.name} already owned.`)
                         : spendCoins(
@@ -551,10 +545,7 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                             `${pack.name} emotes`,
                           )
                     }
-                    className="cm-button mt-4 w-full px-4 py-3 font-black"
-                  >
-                    {pack.items.every((item) => inventory?.emotes.includes(item)) ? "Owned" : `Buy · ${pack.price} coins`}
-                  </button>
+                  />
                 </div>
               ))}
             </ShopSection>
@@ -574,6 +565,39 @@ function ShopSection({ title, subtitle, children }: { title: string; subtitle: s
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{children}</div>
     </section>
+  );
+}
+
+function StoreBody({
+  title,
+  body,
+  price,
+  action,
+  onAction,
+  disabled = false,
+}: {
+  title: string;
+  body: string;
+  price: string;
+  action: string;
+  onAction: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="p-5">
+      <h3 className="text-2xl font-black text-white">{title}</h3>
+      <p className="mt-2 min-h-12 text-sm leading-6 text-white/55">{body}</p>
+      <div className="mt-5 flex items-center justify-between gap-3">
+        <span className="font-mono text-xl font-black text-white">{price}</span>
+        <button
+          onClick={onAction}
+          disabled={disabled}
+          className="rounded-xl bg-[#b8ff38] px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-black transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {action}
+        </button>
+      </div>
+    </div>
   );
 }
 

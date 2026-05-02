@@ -671,6 +671,87 @@ button:hover .piece-token .piece {
   min-height: 240px;
   place-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.chaos-store-visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mix-blend-mode: screen;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.chaos-store-visual > * {
+  position: relative;
+  z-index: 1;
+}
+
+.chaos-store-classic {
+  background: radial-gradient(circle at 22% 22%, rgba(255, 255, 255, 0.55), transparent 24%), linear-gradient(135deg, #f8fafc, #9ca3af);
+}
+
+.chaos-store-neon {
+  background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.4), transparent 20%), linear-gradient(135deg, #22d3ee, #e879f9);
+}
+
+.chaos-store-gold {
+  background: radial-gradient(circle at 40% 32%, rgba(255, 255, 255, 0.42), transparent 23%), linear-gradient(135deg, #fde68a, #a16207);
+}
+
+.chaos-store-wood {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06), transparent 18%, rgba(0, 0, 0, 0.14) 42%, transparent 68%),
+    linear-gradient(135deg, #b45309, #3f2416);
+}
+
+.chaos-store-royal {
+  background: repeating-linear-gradient(135deg, #f5f0e8 0 34px, #6dbd45 34px 68px);
+}
+
+.chaos-store-midnight {
+  background: radial-gradient(circle at 52% 38%, rgba(99, 102, 241, 0.28), transparent 25%), linear-gradient(135deg, #1f2937, #05070d);
+}
+
+.chaos-store-emerald {
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.28), transparent 28%), linear-gradient(135deg, #0f766e, #042f2e);
+}
+
+.chaos-store-carbon {
+  background: radial-gradient(circle at 42% 36%, rgba(255, 255, 255, 0.22), transparent 24%), linear-gradient(135deg, #27272a, #09090b);
+}
+
+.chaos-store-gg {
+  background: linear-gradient(135deg, #27272a, #111827);
+}
+
+.chaos-store-chaos {
+  background: radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.35), transparent 22%), linear-gradient(135deg, #7c2d12, #dc2626);
+}
+
+.chaos-store-kazakh {
+  background: radial-gradient(circle at 20% 20%, #ecfeff, transparent 28%), linear-gradient(135deg, #06b6d4, #1d4ed8);
+}
+
+.chaos-store-pass {
+  background: radial-gradient(circle at 70% 22%, rgba(184, 255, 56, 0.35), transparent 24%), linear-gradient(135deg, #24330d, #05070d);
+}
+
+.chaos-store-coins-starter {
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.34), transparent 24%), linear-gradient(135deg, #14532d, #111827);
+}
+
+.chaos-store-coins-club {
+  background: radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.35), transparent 26%), linear-gradient(135deg, #0f766e, #1e293b);
+}
+
+.chaos-store-coins-vault {
+  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.32), transparent 24%), linear-gradient(135deg, #78350f, #111827);
 }
 
 .chaos-store-stripes {

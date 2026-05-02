@@ -49,7 +49,7 @@ export default function SignupForm() {
           email,
           username,
           city,
-          elo: { classic: 1200, switch: 1200, fog: 1200, chaos: 1200, team: 1200 },
+          elo: { classic: 1200, switch: 1200, fog: 1200, chaos: 1200, team: 1200, speed: 1200 },
           wins: 0,
           losses: 0,
           coins: 0,

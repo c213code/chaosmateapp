@@ -27,10 +27,13 @@ Next.js 14, TypeScript, Supabase, Stockfish.js, chess.js, Tailwind CSS, Socket.i
 - Premium dark landing experience with animated chess-board hero
 - Playable chess board powered by `chess.js` move validation
 - Classic vs AI mode using a Web Worker Stockfish adapter
-- Local, online-by-link, Switch Places, Fog of War, Chaos, and 2v2 Team mode UI
-- Switch Places countdown and board/control flip
+- Dedicated pages for Classic, Local, Switch Places, 2v2, Fog of War, Chaos Mode, and Speed Chess
+- AI / Local / Online mode selection page
+- Online rooms with create/join flow and Supabase Realtime subscriptions
+- Switch Places countdown and board/control flip at random 5-10 move intervals
 - Fog overlay based on legal move vision
-- Chaos teleport effect for random opponent pieces
+- Chaos teleport effect for random opponent non-king pieces
+- Check/checkmate/stalemate result flow with profile rewards
 - Timers, captures, move history, resign/draw controls, AI Coach panel
 - Profile, per-mode ELO, coins, piece skins, Pro CTA, shop, Kazakhstan leaderboard
 - Supabase client placeholders and SQL schema in `supabase/schema.sql`
@@ -42,6 +45,8 @@ Create `.env.local` when connecting a real Supabase project:
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
+
+`.env.local` and all `.env*` files are ignored by git. Do not commit API keys.
 
 ## Dev Notes for Codex
 - Use chess.js for ALL move validation — never implement rules manually

@@ -5,7 +5,7 @@ create table if not exists public.users (
   username text not null unique,
   email text not null,
   city text not null default 'Almaty',
-  elo jsonb not null default '{"classic":1200,"switch":1200,"fog":1200,"chaos":1200,"team":1200}',
+  elo jsonb not null default '{"classic":1200,"switch":1200,"fog":1200,"chaos":1200,"team":1200,"speed":1200}',
   coins integer not null default 0,
   skin_equipped text not null default 'classic',
   wins integer not null default 0,
@@ -58,7 +58,7 @@ end $$;
 
 alter table public.games
   add constraint games_mode_check
-  check (mode in ('classic','local_multiplayer','switch','fog','chaos','team'));
+  check (mode in ('classic','local_multiplayer','switch','switch_places','fog','fog_of_war','chaos','chaos_mode','team','team_2v2','speed','speed_chess'));
 
 alter table public.games
   drop constraint if exists games_ai_difficulty_check;
@@ -106,6 +106,46 @@ create table if not exists public.user_inventory (
   primary key (user_id, item_id)
 );
 
+create table if not exists public.game_rooms (
+  id uuid primary key default gen_random_uuid(),
+  created_by uuid not null references public.users(id) on delete cascade,
+  game_mode text not null,
+  difficulty text,
+  is_private boolean not null default false,
+  password text,
+  max_players integer not null default 2,
+  current_players integer not null default 1,
+  status text not null default 'waiting',
+  fen text not null default 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+  moves_pgn text not null default '',
+  moves_san text not null default '',
+  result text,
+  created_at timestamptz not null default now(),
+  started_at timestamptz,
+  ended_at timestamptz
+);
+
+alter table public.game_rooms add column if not exists fen text not null default 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+alter table public.game_rooms add column if not exists moves_pgn text not null default '';
+alter table public.game_rooms add column if not exists moves_san text not null default '';
+alter table public.game_rooms add column if not exists result text;
+
+create table if not exists public.room_players (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.game_rooms(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  team text,
+  joined_at timestamptz not null default now(),
+  unique (room_id, user_id)
+);
+
+alter table public.game_rooms
+  drop constraint if exists game_rooms_status_check;
+
+alter table public.game_rooms
+  add constraint game_rooms_status_check
+  check (status in ('waiting','playing','finished'));
+
 create or replace view public.leaderboard as
 select
   id,
@@ -123,6 +163,8 @@ alter table public.games enable row level security;
 alter table public.game_players enable row level security;
 alter table public.shop_items enable row level security;
 alter table public.user_inventory enable row level security;
+alter table public.game_rooms enable row level security;
+alter table public.room_players enable row level security;
 
 drop policy if exists "profiles are readable" on public.users;
 drop policy if exists "users insert own profile" on public.users;
@@ -135,6 +177,11 @@ drop policy if exists "authenticated users join game" on public.game_players;
 drop policy if exists "shop is public" on public.shop_items;
 drop policy if exists "users read own inventory" on public.user_inventory;
 drop policy if exists "users buy into own inventory" on public.user_inventory;
+drop policy if exists "rooms are readable" on public.game_rooms;
+drop policy if exists "users create rooms" on public.game_rooms;
+drop policy if exists "room owners update rooms" on public.game_rooms;
+drop policy if exists "room players are readable" on public.room_players;
+drop policy if exists "users join rooms" on public.room_players;
 
 create policy "profiles are readable"
 on public.users for select
@@ -233,6 +280,48 @@ using (auth.uid() = user_id);
 
 create policy "users buy into own inventory"
 on public.user_inventory for insert
+with check (auth.uid() = user_id);
+
+create policy "rooms are readable"
+on public.game_rooms for select
+using (is_private = false or created_by = auth.uid());
+
+create policy "users create rooms"
+on public.game_rooms for insert
+with check (auth.uid() = created_by);
+
+create policy "room owners update rooms"
+on public.game_rooms for update
+using (
+  created_by = auth.uid()
+  or exists (
+    select 1 from public.room_players
+    where room_players.room_id = game_rooms.id
+      and room_players.user_id = auth.uid()
+  )
+)
+with check (
+  created_by = auth.uid()
+  or exists (
+    select 1 from public.room_players
+    where room_players.room_id = game_rooms.id
+      and room_players.user_id = auth.uid()
+  )
+);
+
+create policy "room players are readable"
+on public.room_players for select
+using (
+  user_id = auth.uid()
+  or exists (
+    select 1 from public.game_rooms
+    where game_rooms.id = room_players.room_id
+      and (game_rooms.is_private = false or game_rooms.created_by = auth.uid())
+  )
+);
+
+create policy "users join rooms"
+on public.room_players for insert
 with check (auth.uid() = user_id);
 
 insert into public.shop_items (name, type, price_coins, price_usd)

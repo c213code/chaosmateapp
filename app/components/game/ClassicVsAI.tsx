@@ -58,6 +58,7 @@ export default function ClassicVsAI({
   const movableSquares = gameId && !aiThinking && !result && game.turn() === "w" ? getMovableSquares(game, "w") : [];
   const lastMove = history.at(-1);
   const queenThreat = getQueenThreat(game, "w");
+  const gameStatus = result ? "finished" : game.isCheck() ? "check" : gameId ? "playing" : "idle";
   const capturedByWhite = history
     .filter((move) => move.color === "w" && move.captured)
     .map((move) => move.captured)
@@ -225,6 +226,8 @@ export default function ClassicVsAI({
     setMessage(
       moveResult.game.isGameOver()
         ? "Game over."
+        : moveResult.game.isCheck()
+          ? `CHECK! ${moveResult.game.turn() === "w" ? "White" : "Black"} king is under attack.`
         : threat
           ? `Careful: your queen is under attack on ${threat.queenSquare}.`
           : moveResult.game.turn() === "w"
@@ -312,6 +315,17 @@ export default function ClassicVsAI({
     await finalizeGame("resigned", game, history);
   }
 
+  async function backHomeDuringGame() {
+    if (!gameId || result) {
+      return;
+    }
+
+    if (window.confirm("Resign this game and go back home?")) {
+      await finalizeGame("resigned", game, history);
+      window.location.href = "/";
+    }
+  }
+
   function reviewBoard() {
     setShowResult(false);
     setReviewMode(true);
@@ -346,9 +360,20 @@ export default function ClassicVsAI({
               <button onClick={() => startGame()} className="rounded-md bg-[#c9a227] px-4 py-2 text-sm font-black text-black">
                 New Game
               </button>
+              {gameStatus === "playing" || gameStatus === "check" ? (
+                <button onClick={backHomeDuringGame} className="rounded-md border border-red-400/35 px-4 py-2 text-sm font-black text-red-200 hover:bg-red-400/10">
+                  Back Home
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
+
+        {gameStatus === "check" && (
+          <div className="rounded-md border border-red-400/45 bg-red-500/18 p-4 text-center text-xl font-black text-red-100 shadow-[0_0_30px_rgba(239,68,68,0.18)]">
+            CHECK!
+          </div>
+        )}
 
         <div className="relative">
           {(aiThinking || promotion) && (
@@ -409,6 +434,11 @@ export default function ClassicVsAI({
               Queen threat: {queenThreat.attackers.join(", ")} attacking {queenThreat.queenSquare}.
             </div>
           )}
+          {game.isCheck() && !result && (
+            <div className="mt-3 rounded-2xl border border-red-400/35 bg-red-500/12 p-3 text-sm font-bold text-red-100">
+              Check warning: {game.turn() === "w" ? "your" : "Stockfish"} king is under attack.
+            </div>
+          )}
           {!selected && movableSquares.length > 0 && (
             <p className="mt-3 text-xs leading-5 text-white/42">
               Подсвеченные фигуры могут ходить сейчас. Нажми на любую из них, чтобы увидеть конкретные клетки.
@@ -447,9 +477,14 @@ export default function ClassicVsAI({
           <div className="liquid-panel w-full max-w-md p-6 text-center">
             <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#c9a227]">Game finished</p>
             <h2 className="mt-3 text-4xl font-black text-white">{resultText(result)}</h2>
-            <button type="button" onClick={reviewBoard} className="mt-6 rounded-md bg-[#c9a227] px-5 py-3 font-black text-black">
-              Review Board
-            </button>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button type="button" onClick={() => startGame()} className="rounded-md border border-white/10 px-5 py-3 font-black text-white/72 hover:text-white">
+                Play Again
+              </button>
+              <button type="button" onClick={reviewBoard} className="rounded-md bg-[#c9a227] px-5 py-3 font-black text-black">
+                Review Board
+              </button>
+            </div>
           </div>
         </div>
       )}

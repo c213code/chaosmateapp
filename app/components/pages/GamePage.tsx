@@ -112,8 +112,8 @@ export default function GamePage({ profile }: GamePageProps) {
                 Seven playable modes, tactical hints, profile persistence, coins, ELO, and a board designed to feel like a real product.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <a href="/game/classic" className="cm-button px-5 py-3 font-black">
-                  Quick Play
+                <a href="/game/mode-select" className="cm-button px-5 py-3 font-black">
+                  Choose AI / Local / Online
                 </a>
                 <a href="/profile" className="rounded-md border border-white/10 px-5 py-3 font-black text-white/76 hover:text-white">
                   Profile
@@ -139,7 +139,9 @@ export default function GamePage({ profile }: GamePageProps) {
                 <h2 className="text-xl font-black uppercase tracking-[0.12em]">Select Game Mode</h2>
                 <p className="mt-1 text-sm text-white/45">Each mode opens on its own dedicated page.</p>
               </div>
-              <span className="rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2 text-sm font-bold text-[#86efac]">1,234 live games</span>
+              <a href="/game/rooms" className="rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2 text-sm font-bold text-[#86efac]">
+                Online Rooms
+              </a>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {modes.map((mode) => (

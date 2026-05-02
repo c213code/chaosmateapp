@@ -50,11 +50,13 @@ export default function VariantChessGame({
   user,
   profile,
   setProfile,
+  onlineRoomId,
 }: {
   mode: Exclude<GameMode, "classic-ai" | "online">;
   user: ChaosMateUser;
   profile: Profile;
   setProfile: (profile: Profile | null) => void;
+  onlineRoomId?: string;
 }) {
   const [fen, setFen] = useState(START_FEN);
   const [history, setHistory] = useState<Move[]>([]);
@@ -82,6 +84,57 @@ export default function VariantChessGame({
   const queenThreat = getQueenThreat(game, turn);
   const hiddenSquares = mode === "fog" ? getHiddenSquares(game, turn) : [];
   const movableSquares = result ? [] : getMovableSquares(game, turn).filter((square) => canMoveSquare(game, square, mode, teamSeat));
+  const gameStatus = result ? "finished" : game.isCheck() ? "check" : gameId ? "playing" : "idle";
+
+  useEffect(() => {
+    const client = supabase;
+
+    if (!onlineRoomId || !client) {
+      return;
+    }
+
+    const activeClient = client;
+    let alive = true;
+
+    async function loadOnlineState() {
+      const { data } = await activeClient.from("game_rooms").select("fen,moves_pgn,moves_san,result,status").eq("id", onlineRoomId).maybeSingle();
+
+      if (!alive || !data) {
+        return;
+      }
+
+      if (data.fen) {
+        setFen(data.fen);
+      }
+
+      if (data.moves_pgn) {
+        const hydrated = new Chess();
+        try {
+          hydrated.loadPgn(data.moves_pgn);
+          setHistory(hydrated.history({ verbose: true }));
+        } catch {
+          setHistory([]);
+        }
+      }
+
+      if (data.result && data.status === "finished") {
+        setResult(data.result as Outcome);
+        setShowResult(true);
+      }
+    }
+
+    loadOnlineState();
+
+    const channel = activeClient
+      .channel(`game-room-state-${onlineRoomId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "game_rooms", filter: `id=eq.${onlineRoomId}` }, () => loadOnlineState())
+      .subscribe();
+
+    return () => {
+      alive = false;
+      activeClient.removeChannel(channel);
+    };
+  }, [onlineRoomId]);
 
   useEffect(() => {
     if (mode !== "speed" || result || !timerStartedRef.current) {
@@ -132,6 +185,12 @@ export default function VariantChessGame({
     setWhiteMs(speedPreset === "bullet" ? 30000 : 180000);
     setBlackMs(speedPreset === "bullet" ? 30000 : 180000);
     setMessage(`${modeCopy[mode].title} started. White to move.`);
+
+    if (onlineRoomId) {
+      setGameId(`online-${onlineRoomId}`);
+      setMessage(`${modeCopy[mode].title} online room started. White to move.`);
+      return;
+    }
 
     if (!supabase) {
       setGameId(`local-${mode}`);
@@ -213,6 +272,7 @@ export default function VariantChessGame({
     let nextFen = moveResult.newFen;
     let nextHistory = moveResult.history;
     let nextMessage = `${nextGame.turn() === "w" ? "White" : "Black"} to move.`;
+    let triggeredSwitch = false;
 
     if (mode === "chaos" && nextHistory.length > 0 && nextHistory.length % 6 === 0) {
       const opponent = nextGame.turn();
@@ -226,6 +286,7 @@ export default function VariantChessGame({
     }
 
     if (mode === "switch" && nextHistory.length === switchAt) {
+      triggeredSwitch = true;
       setSwitching(3);
       setMessage("SWITCHING IN 3...");
       const countdown = window.setInterval(() => {
@@ -248,8 +309,13 @@ export default function VariantChessGame({
     }
 
     if (mode === "team") {
-      setTeamSeat(nextSeat(nextGame.turn()));
-      nextMessage = `${seatLabel(nextSeat(nextGame.turn()))} controls this turn.`;
+      const suggestedSeat = nextSeat(nextGame.turn());
+      setTeamSeat(suggestedSeat);
+      nextMessage = `${nextGame.turn() === "w" ? "White" : "Black"} to move. Pick Player A or B, then move only that seat's pieces.`;
+    }
+
+    if (nextGame.isCheck()) {
+      nextMessage = `CHECK! ${nextGame.turn() === "w" ? "White" : "Black"} king is under attack.`;
     }
 
     const threat = getQueenThreat(nextGame, nextGame.turn());
@@ -261,7 +327,9 @@ export default function VariantChessGame({
     setHistory(nextHistory);
     setSelected(null);
     setPromotion(null);
-    setMessage(nextMessage);
+    if (!triggeredSwitch) {
+      setMessage(nextMessage);
+    }
     persistGame(nextGame, nextHistory, "active");
 
     const outcome = getGameResult(nextGame);
@@ -274,6 +342,21 @@ export default function VariantChessGame({
 
   async function persistGame(nextGame: Chess, nextHistory: Move[], status = "active", outcome?: Outcome) {
     if (!supabase || !gameId || gameId.startsWith("local-")) {
+      return;
+    }
+
+    if (onlineRoomId) {
+      await supabase
+        .from("game_rooms")
+        .update({
+          fen: nextGame.fen(),
+          moves_pgn: nextGame.pgn(),
+          moves_san: nextHistory.map((move) => move.san).join(" "),
+          status: status === "finished" ? "finished" : "playing",
+          result: outcome || null,
+          ended_at: status === "finished" ? new Date().toISOString() : null,
+        })
+        .eq("id", onlineRoomId);
       return;
     }
 
@@ -303,6 +386,17 @@ export default function VariantChessGame({
     setMessage(customMessage || resultText(outcome));
     await persistGame(finalGame, finalHistory, "finished", outcome);
     await rewardProfile(outcome);
+  }
+
+  async function backHomeDuringGame() {
+    if (!gameId || result) {
+      return;
+    }
+
+    if (window.confirm("Resign this game and go back home?")) {
+      await finalizeGame(turn === "w" ? "black_win" : "white_win", game, history, "Game resigned before returning home.");
+      window.location.href = "/";
+    }
   }
 
   async function rewardProfile(outcome: Outcome) {
@@ -371,9 +465,22 @@ export default function VariantChessGame({
               <button onClick={startGame} className="cm-button px-4 py-2 text-sm font-black">
                 New Game
               </button>
+              {gameStatus === "playing" || gameStatus === "check" ? (
+                <button onClick={backHomeDuringGame} className="rounded-md border border-red-400/35 px-4 py-2 text-sm font-black text-red-200 hover:bg-red-400/10">
+                  Back Home
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
+
+        {gameStatus === "check" && (
+          <div className="rounded-md border border-red-400/45 bg-red-500/18 p-4 text-center text-xl font-black text-red-100 shadow-[0_0_30px_rgba(239,68,68,0.18)]">
+            CHECK!
+          </div>
+        )}
+
+        {mode === "team" && <TeamGuide currentColor={turn} selectedSeat={teamSeat} onSeat={setTeamSeat} />}
 
         <div className="relative mx-auto w-[min(92vw,760px)]">
           {switching > 0 && (
@@ -435,6 +542,7 @@ export default function VariantChessGame({
               </>
             )}
             {mode === "team" && <State label="Seat" value={seatLabel(teamSeat)} />}
+            {mode === "fog" && <State label="Fog" value={`${hiddenSquares.length} hidden`} />}
           </div>
           <p className="mt-4 rounded-md border border-white/10 bg-black/20 p-3 text-sm leading-6 text-white/70">{message}</p>
           {!selected && movableSquares.length > 0 && <p className="mt-3 text-xs leading-5 text-white/50">Подсвеченные фигуры могут ходить. Нажми на фигуру, потом на зеленую клетку.</p>}
@@ -477,9 +585,9 @@ export default function VariantChessGame({
             <h2 className="mt-3 text-4xl font-black text-white">{resultText(result)}</h2>
             <p className="mt-3 text-sm text-white/60">Saved with final FEN, PGN, SAN move list, ELO and coins.</p>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <a href="/" className="rounded-md border border-white/10 px-4 py-3 font-black text-white/72 hover:text-white">
-                Home
-              </a>
+              <button type="button" onClick={startGame} className="rounded-md border border-white/10 px-4 py-3 font-black text-white/72 hover:text-white">
+                Play Again
+              </button>
               <button type="button" onClick={() => setShowResult(false)} className="cm-button px-4 py-3 font-black">
                 Review Board
               </button>
@@ -509,11 +617,14 @@ function getHiddenSquares(game: Chess, color: Color) {
   const visible = getVisionSquares(game, color);
   const hidden: Square[] = [];
 
-  game.board().flat().forEach((piece) => {
-    if (piece && piece.color !== color && !visible.has(piece.square)) {
-      hidden.push(piece.square);
+  for (let rank = 1; rank <= 8; rank += 1) {
+    for (const file of ["a", "b", "c", "d", "e", "f", "g", "h"]) {
+      const square = `${file}${rank}` as Square;
+      if (!visible.has(square)) {
+        hidden.push(square);
+      }
     }
-  });
+  }
 
   return hidden;
 }
@@ -587,5 +698,58 @@ function MoveRow({ index, white, black }: { index: number; white?: string; black
       <span>{white || ""}</span>
       <span>{black || ""}</span>
     </>
+  );
+}
+
+function TeamGuide({
+  currentColor,
+  selectedSeat,
+  onSeat,
+}: {
+  currentColor: Color;
+  selectedSeat: TeamSeat;
+  onSeat: (seat: TeamSeat) => void;
+}) {
+  const seats: Array<{ seat: TeamSeat; team: Color; title: string; pieces: string; controls: string }> = [
+    { seat: "white-major", team: "w", title: "White A", pieces: "♙ ♖ ♕", controls: "Pawns, Rooks, Queen" },
+    { seat: "white-minor", team: "w", title: "White B", pieces: "♘ ♗ ♔", controls: "Knights, Bishops, King" },
+    { seat: "black-major", team: "b", title: "Black A", pieces: "♟ ♜ ♛", controls: "Pawns, Rooks, Queen" },
+    { seat: "black-minor", team: "b", title: "Black B", pieces: "♞ ♝ ♚", controls: "Knights, Bishops, King" },
+  ];
+
+  return (
+    <div className="cm-panel p-4">
+      <div className="mb-3">
+        <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#d4af37]">2v2 Team Control</p>
+        <p className="mt-1 text-sm text-white/55">
+          Current side: {currentColor === "w" ? "White" : "Black"}. Choose Player A or B for that side, then move only the highlighted pieces.
+        </p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {seats.map((item) => {
+          const active = item.team === currentColor && item.seat === selectedSeat;
+          const available = item.team === currentColor;
+
+          return (
+            <button
+              key={item.seat}
+              onClick={() => onSeat(item.seat)}
+              disabled={!available}
+              className={`rounded-md border p-3 text-left transition ${
+                active
+                  ? "border-[#d4af37] bg-[#d4af37]/18"
+                  : available
+                    ? "border-white/14 bg-white/8 hover:border-[#d4af37]/60"
+                    : "cursor-not-allowed border-white/8 bg-black/20 opacity-45"
+              }`}
+            >
+              <p className="font-black text-white">{item.title}</p>
+              <p className="mt-1 text-2xl text-[#d4af37]">{item.pieces}</p>
+              <p className="mt-1 text-xs text-white/50">{item.controls}</p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

@@ -1,0 +1,220 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import AuthPage from "@/app/components/pages/AuthPage";
+import { useAuthProfile } from "@/app/components/auth/useAuthProfile";
+import { createOnlineRoom, getOnlineRooms, joinOnlineRoom, supabase, type OnlineRoom } from "@/app/lib/supabase";
+
+const onlineModes = [
+  { value: "classic", label: "Classic" },
+  { value: "switch_places", label: "Switch Places" },
+  { value: "2v2", label: "2v2 Team" },
+  { value: "fog_of_war", label: "Fog of War" },
+  { value: "chaos_mode", label: "Chaos Mode" },
+  { value: "speed_chess", label: "Speed Chess" },
+];
+
+export default function OnlineRoomsPage() {
+  const { user, profile, loading } = useAuthProfile();
+  const [rooms, setRooms] = useState<OnlineRoom[]>([]);
+  const [mode, setMode] = useState("classic");
+  const [difficulty, setDifficulty] = useState("Medium");
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadRooms() {
+      const { rooms, error } = await getOnlineRooms();
+      if (!alive) {
+        return;
+      }
+      setRooms(rooms);
+      if (error) {
+        setError("Rooms table is not ready in Supabase yet, showing a local demo room.");
+      }
+    }
+
+    loadRooms();
+
+    const client = supabase;
+
+    if (!client) {
+      return () => {
+        alive = false;
+      };
+    }
+
+    const channel = client
+      .channel("public-game-rooms")
+      .on("postgres_changes", { event: "*", schema: "public", table: "game_rooms" }, () => loadRooms())
+      .subscribe();
+
+    return () => {
+      alive = false;
+      client.removeChannel(channel);
+    };
+  }, []);
+
+  if (loading) {
+    return <main className="cm-page grid min-h-screen place-items-center text-white">Loading rooms...</main>;
+  }
+
+  if (!user) {
+    return <AuthPage />;
+  }
+
+  async function handleCreateRoom() {
+    if (!user) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    const { roomId, error } = await createOnlineRoom({
+      userId: user.id,
+      gameMode: mode,
+      difficulty,
+      isPrivate,
+      password,
+    });
+    setBusy(false);
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    window.location.href = `/game/online/${roomId}`;
+  }
+
+  async function handleJoin(room: OnlineRoom) {
+    if (!user) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    const { error } = await joinOnlineRoom(room.id, user.id, room.game_mode === "2v2" ? "white_b" : "black");
+    setBusy(false);
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    window.location.href = `/game/online/${room.id}`;
+  }
+
+  return (
+    <main className="cm-page min-h-screen p-4 text-white">
+      <div className="mx-auto max-w-7xl">
+        <nav className="cm-panel mb-8 flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <a href="/" className="font-black tracking-[0.18em]">♛ CHAOSMATE</a>
+          <div className="flex items-center gap-3 text-sm text-white/60">
+            <span>{profile?.username || "Player"}</span>
+            <a href="/" className="rounded-md border border-white/10 px-3 py-2 hover:text-white">
+              Home
+            </a>
+          </div>
+        </nav>
+
+        <section className="grid gap-6 lg:grid-cols-[360px_1fr]">
+          <div className="cm-panel h-fit p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#d4af37]">Online</p>
+            <h1 className="mt-2 text-3xl font-black">Create Room</h1>
+            <div className="mt-6 space-y-4">
+              <label className="block">
+                <span className="text-sm text-white/55">Mode</span>
+                <select value={mode} onChange={(event) => setMode(event.target.value)} className="mt-2 w-full rounded-md border border-white/10 bg-[#0f172a] px-3 py-3 text-white">
+                  {onlineModes.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-sm text-white/55">Difficulty / pace</span>
+                <select value={difficulty} onChange={(event) => setDifficulty(event.target.value)} className="mt-2 w-full rounded-md border border-white/10 bg-[#0f172a] px-3 py-3 text-white">
+                  <option>Easy</option>
+                  <option>Medium</option>
+                  <option>Hard</option>
+                  <option>Bullet 30s</option>
+                  <option>Blitz 3m</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-3 rounded-md border border-white/10 bg-white/5 p-3">
+                <input type="checkbox" checked={isPrivate} onChange={(event) => setIsPrivate(event.target.checked)} />
+                <span>Private room</span>
+              </label>
+              {isPrivate && (
+                <input
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Room password"
+                  className="w-full rounded-md border border-white/10 bg-[#0f172a] px-3 py-3 text-white placeholder:text-white/35"
+                />
+              )}
+              <button onClick={handleCreateRoom} disabled={busy} className="cm-button w-full px-4 py-3 font-black disabled:opacity-50">
+                {busy ? "Working..." : "+ Create Room"}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-4 flex items-end justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black">Available Rooms</h2>
+                <p className="mt-1 text-sm text-white/48">Create a room, share the link, or join a waiting player.</p>
+              </div>
+            </div>
+            {error && <p className="mb-4 rounded-md border border-amber-300/35 bg-amber-300/12 p-3 text-sm text-amber-100">{error}</p>}
+            <div className="grid gap-4 md:grid-cols-2">
+              {rooms.map((room) => (
+                <RoomCard key={room.id} room={room} onJoin={() => handleJoin(room)} busy={busy} />
+              ))}
+              {!rooms.length && <div className="cm-panel p-6 text-white/56">No public rooms yet. Create the first one.</div>}
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function RoomCard({ room, onJoin, busy }: { room: OnlineRoom; onJoin: () => void; busy: boolean }) {
+  const full = room.current_players >= room.max_players;
+
+  return (
+    <div className="cm-card p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-xl font-black text-[#d4af37]">{room.game_mode.replace(/_/g, " ").toUpperCase()}</h3>
+          <p className="mt-1 text-sm text-white/42">Room {room.id.slice(0, 8).toUpperCase()}</p>
+        </div>
+        {room.is_private && <span className="rounded bg-red-500/20 px-2 py-1 text-xs font-bold text-red-100">PRIVATE</span>}
+      </div>
+      <div className="mt-5 grid grid-cols-3 gap-2 text-sm">
+        <Info label="Players" value={`${room.current_players}/${room.max_players}`} />
+        <Info label="Pace" value={room.difficulty || "Any"} />
+        <Info label="Status" value={room.status} />
+      </div>
+      <button onClick={onJoin} disabled={busy || full || room.status !== "waiting"} className="cm-button mt-5 w-full px-4 py-3 font-black disabled:opacity-45">
+        {full ? "Full" : "Join"}
+      </button>
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-white/10 bg-black/20 p-3">
+      <p className="text-xs uppercase tracking-[0.16em] text-white/35">{label}</p>
+      <p className="mt-1 truncate font-bold text-white">{value}</p>
+    </div>
+  );
+}

@@ -645,6 +645,95 @@ button:hover .piece-token .piece {
   background: rgba(255, 255, 255, 0.82) !important;
 }
 
+.chaos-subscription-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(184, 255, 56, 0.18), transparent 34%),
+    linear-gradient(135deg, rgba(17, 24, 39, 0.96), rgba(5, 10, 18, 0.95));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+}
+
+.chaos-store-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)),
+    rgba(10, 14, 25, 0.9);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
+}
+
+.chaos-store-visual {
+  position: relative;
+  display: grid;
+  min-height: 240px;
+  place-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chaos-store-stripes {
+  background: repeating-linear-gradient(135deg, #f5f0e8 0 34px, #6dbd45 34px 68px);
+}
+
+.chaos-store-pink {
+  background: radial-gradient(circle at 55% 45%, rgba(255, 255, 255, 0.52), transparent 18%), linear-gradient(135deg, #fda4af, #be123c);
+}
+
+.chaos-store-dark {
+  background: radial-gradient(circle at 52% 38%, rgba(212, 175, 55, 0.18), transparent 25%), linear-gradient(135deg, #1f2937, #05070d);
+}
+
+.chaos-store-teal {
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.32), transparent 28%), linear-gradient(135deg, #0f766e, #042f2e);
+}
+
+.chaos-store-number {
+  background: linear-gradient(135deg, #27272a, #111827);
+}
+
+.chaos-store-number span {
+  color: #b8ff38;
+}
+
+.chaos-store-crystal {
+  background: radial-gradient(circle at 20% 20%, #ecfeff, transparent 28%), linear-gradient(135deg, #a5f3fc, #8b5cf6);
+}
+
+.move-history-pro {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 28px;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.07), transparent 36%),
+    rgba(17, 24, 39, 0.82);
+}
+
+.move-history-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.75rem 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.move-history-row:last-child {
+  border-bottom: 0;
+}
+
+.move-chip-active {
+  width: fit-content;
+  border-radius: 7px;
+  background: rgba(212, 175, 55, 0.28);
+  padding: 0.25rem 0.55rem;
+  color: #f7d96b;
+}
+
 .piece-svg {
   position: relative;
   z-index: 2;

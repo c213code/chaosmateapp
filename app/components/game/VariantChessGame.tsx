@@ -734,18 +734,25 @@ export default function VariantChessGame({
           </div>
         </div>
 
-        <div className="cm-panel p-4">
-          <h2 className="text-lg font-bold text-white">Move History</h2>
-          <div className="mt-3 max-h-72 overflow-auto rounded-md border border-white/10 bg-black/20 p-3 font-mono text-sm text-white/75">
+        <div className="move-history-pro">
+          <div className="border-b border-white/10 p-5">
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#d4af37]">● Move History</p>
+          </div>
+          <div className="max-h-72 overflow-auto px-5 py-4 text-white/82">
             {history.length ? (
-              <div className="grid grid-cols-[44px_1fr_1fr] gap-y-2">
+              <div>
                 {Array.from({ length: Math.ceil(history.length / 2) }).map((_, index) => (
-                  <MoveRow key={index} index={index} white={history[index * 2]?.san} black={history[index * 2 + 1]?.san} />
+                  <MoveRow key={index} index={index} white={history[index * 2]?.san} black={history[index * 2 + 1]?.san} active={index === Math.ceil(history.length / 2) - 1} />
                 ))}
               </div>
             ) : (
               <p className="font-sans text-white/45">No moves yet.</p>
             )}
+          </div>
+          <div className="grid grid-cols-3 gap-3 border-t border-white/10 p-4">
+            <button className="rounded-full border border-white/15 bg-white/8 px-4 py-3 font-black text-white/80">↞</button>
+            <button className="rounded-full border border-white/15 bg-white/8 px-4 py-3 font-black text-white/80">◀</button>
+            <button className="rounded-full border border-white/15 bg-white/8 px-4 py-3 font-black text-white/80">▶</button>
           </div>
         </div>
 
@@ -965,13 +972,13 @@ function State({ label, value, danger = false }: { label: string; value: string 
   );
 }
 
-function MoveRow({ index, white, black }: { index: number; white?: string; black?: string }) {
+function MoveRow({ index, white, black, active = false }: { index: number; white?: string; black?: string; active?: boolean }) {
   return (
-    <>
+    <div className="move-history-row">
       <span className="text-white/35">{index + 1}.</span>
-      <span>{white || ""}</span>
-      <span>{black || ""}</span>
-    </>
+      <span className={active && white ? "move-chip-active" : ""}>{white || ""}</span>
+      <span className={active && black ? "move-chip-active" : ""}>{black || ""}</span>
+    </div>
   );
 }
 

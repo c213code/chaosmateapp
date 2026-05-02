@@ -54,6 +54,22 @@ const coinPacks = [
   { name: "Founder Vault", coins: 3600, price: "$14.99" },
 ];
 
+const proPlans = [
+  { name: "VIP", price: "$4.99/month", icon: "♙", body: "Extra board themes, profile badge and saved history boost." },
+  { name: "PLUS", price: "$6.99/month", icon: "♘", body: "More AI hints, faster matchmaking and advanced stats." },
+  { name: "PREMIUM", price: "$9.99/month", icon: "♕", body: "Unlimited analysis, opening explorer and bonus coins.", popular: true },
+  { name: "PRO", price: "$14.99/month", icon: "♛", body: "Everything included, priority rooms and exclusive content." },
+];
+
+const storeBundles = [
+  { name: "Grandmaster Board", price: "1,800 coins", badge: "Best value", visual: "stripes", icon: "♔", body: "Tournament-style green board for ranked games." },
+  { name: "Plush Pink Pawn", price: "700 coins", visual: "pink", icon: "♙", body: "Soft collector pawn vibe for emotes and profile cards." },
+  { name: "Midnight Chess Hoodie", price: "3,400 coins", badge: "Limited", visual: "dark", icon: "GM", body: "Exclusive cosmetic bundle with midnight profile frame." },
+  { name: "Neon Blitz Clock", price: "900 coins", visual: "teal", icon: "◷", body: "Speed chess timer skin with glowing accents." },
+  { name: "64 Tactics Card Deck", price: "640 coins", visual: "number", icon: "64", body: "Unlock tactical message cards for table talk." },
+  { name: "Crystal Queen Keycap", price: "1,200 coins", visual: "crystal", icon: "♕", body: "Premium queen reaction and profile badge." },
+];
+
 export default function GameRouteUtilityPage({ view }: { view: "profile" | "leaderboard" | "shop" }) {
   const { user, profile, setProfile, loading } = useAuthProfile();
   const [cityFilter, setCityFilter] = useState("All cities");
@@ -348,6 +364,52 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
               </div>
               {shopMessage && <p className="mt-5 rounded-xl border border-[#d4af37]/30 bg-[#d4af37]/10 p-3 text-sm font-bold text-[#f7d96b]">{shopMessage}</p>}
             </div>
+
+            <section className="chaos-subscription-panel p-5">
+              <div className="grid gap-6 lg:grid-cols-[1fr_140px] lg:items-start">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.32em] text-[#d4af37]">Upgrade to Pro</p>
+                  <h2 className="mt-2 text-4xl font-black uppercase tracking-wide text-white">Our Subscriptions</h2>
+                  <p className="mt-2 text-xs uppercase tracking-[0.24em] text-white/45">Choose your plan. Register first, then start a free trial.</p>
+                </div>
+                <div className="grid h-24 w-24 place-items-center rounded-[28px] border border-[#d4af37]/20 bg-[#d4af37]/10 text-5xl text-white shadow-[0_0_45px_rgba(212,175,55,0.16)] lg:justify-self-end">♕</div>
+              </div>
+              <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {proPlans.map((plan) => (
+                  <div key={plan.name} className={`relative rounded-[24px] border bg-white/[0.055] p-5 shadow-xl shadow-black/20 ${plan.popular ? "border-[#d4af37] bg-[#d4af37]/15" : "border-white/12"}`}>
+                    {plan.popular && <span className="absolute right-5 top-4 text-[10px] font-black uppercase tracking-[0.24em] text-[#f7d96b]">Most popular</span>}
+                    <p className="text-3xl text-white">{plan.icon}</p>
+                    <h3 className="mt-7 text-3xl font-black uppercase text-white">{plan.name}</h3>
+                    <p className="mt-2 text-lg font-black text-[#b8ff38]">{plan.price}</p>
+                    <p className="mt-2 min-h-16 text-sm leading-6 text-white/58">{plan.body}</p>
+                    <button onClick={() => buyCoinPack(250, `${plan.name} free trial bonus`)} className="mt-4 w-full rounded-xl bg-[#b8ff38] px-4 py-3 font-black text-black hover:brightness-105">
+                      Start FREE Trial
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <ShopSection title="Store Bundles" subtitle="Large premium bundles inspired by esports stores, adapted to ChaosMate cosmetics.">
+              {storeBundles.map((bundle) => (
+                <div key={bundle.name} className="chaos-store-card overflow-hidden">
+                  <div className={`chaos-store-visual chaos-store-${bundle.visual}`}>
+                    {bundle.badge && <span className="absolute left-5 top-5 rounded-full bg-[#b8ff38] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-black">{bundle.badge}</span>}
+                    <span className="text-6xl font-black text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.22)]">{bundle.icon}</span>
+                  </div>
+                  <div className="p-5">
+                    <h3 className="text-2xl font-black text-white">{bundle.name}</h3>
+                    <p className="mt-2 min-h-12 text-sm leading-6 text-white/55">{bundle.body}</p>
+                    <div className="mt-5 flex items-center justify-between gap-3">
+                      <span className="font-mono text-xl font-black text-white">{bundle.price}</span>
+                      <button onClick={() => setShopMessage(`${bundle.name} checkout placeholder opened.`)} className="rounded-xl bg-[#b8ff38] px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-black">
+                        Buy now
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </ShopSection>
 
             <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
               <div className="cm-panel p-5">

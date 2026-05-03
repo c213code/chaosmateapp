@@ -329,6 +329,9 @@ values
   ('Neon Skin Pack', 'piece_skin', 450, null),
   ('Gold Skin Pack', 'piece_skin', 900, null),
   ('Wooden Skin Pack', 'piece_skin', 300, null),
+  ('Tengri Blue Skin Pack', 'piece_skin', 720, null),
+  ('Steppe Nomad Skin Pack', 'piece_skin', 680, null),
+  ('Yurt Ivory Skin Pack', 'piece_skin', 760, null),
   ('Cyberpunk Board', 'board_theme', 1200, null),
   ('ChaosMate Pro', 'subscription', null, 9.00)
 on conflict do nothing;

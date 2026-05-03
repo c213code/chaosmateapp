@@ -35,6 +35,9 @@ const pieceSkins = [
   { id: "neon" as Skin, name: "Neon", price: 320, preview: "♕♘", visual: "neon", body: "Glowing cyber pieces for chaotic night matches.", checkoutId: "neon-skin" },
   { id: "gold" as Skin, name: "Gold", price: 520, preview: "♛♞", visual: "gold", body: "Metallic gold pieces with ranked-match energy.", badge: "popular", checkoutId: "gold-skin" },
   { id: "wood" as Skin, name: "Wood", price: 420, preview: "♜♟", visual: "wood", body: "Warm carved pieces for classic board lovers.", checkoutId: "wood-skin" },
+  { id: "tengri" as Skin, name: "Tengri Blue", price: 720, preview: "♕♞", visual: "tengri", body: "Sky-blue pieces inspired by Kazakhstan's flag and open horizons.", badge: "KZ", checkoutId: "tengri-skin" },
+  { id: "steppe" as Skin, name: "Steppe Nomad", price: 680, preview: "♜♟", visual: "steppe", body: "Sand, bronze, and stone tones for matches with a calm steppe feel.", checkoutId: "steppe-skin" },
+  { id: "yurt" as Skin, name: "Yurt Ivory", price: 760, preview: "♔♛", visual: "yurt", body: "Ivory and deep red pieces with a warm traditional craft mood.", checkoutId: "yurt-skin" },
 ] as const;
 
 const boardThemes = [

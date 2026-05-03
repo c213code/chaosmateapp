@@ -11,7 +11,7 @@ export type GameMode =
   | "team";
 
 export type Difficulty = "Easy" | "Medium" | "Hard";
-export type Skin = "classic" | "neon" | "gold" | "wood";
+export type Skin = "classic" | "neon" | "gold" | "wood" | "tengri" | "steppe" | "yurt";
 export type BoardTheme = "royal-wood" | "chesscom-green" | "midnight-glass" | "emerald-club" | "carbon-arena";
 
 export type TeamSeat =
@@ -283,6 +283,9 @@ export const leaderboard = [
 export const shopItems = [
   { name: "Neon Skin Pack", type: "Piece skin", priceCoins: 450, priceUsd: null },
   { name: "Gold Skin Pack", type: "Piece skin", priceCoins: 900, priceUsd: null },
+  { name: "Tengri Blue Skin Pack", type: "Piece skin", priceCoins: 720, priceUsd: null },
+  { name: "Steppe Nomad Skin Pack", type: "Piece skin", priceCoins: 680, priceUsd: null },
+  { name: "Yurt Ivory Skin Pack", type: "Piece skin", priceCoins: 760, priceUsd: null },
   { name: "Cyberpunk Board", type: "Board theme", priceCoins: 1200, priceUsd: null },
   { name: "ChaosMate Pro", type: "Subscription", priceCoins: null, priceUsd: 9 },
 ];

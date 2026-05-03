@@ -459,6 +459,7 @@ button:hover .piece-token .piece {
 .cm-page {
   position: relative;
   isolation: isolate;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 10% 8%, rgba(59, 130, 246, 0.16), transparent 28%),
     radial-gradient(circle at 88% 10%, rgba(212, 175, 55, 0.14), transparent 30%),
@@ -470,13 +471,33 @@ button:hover .piece-token .piece {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
   background:
     linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(circle at center, black 0%, transparent 82%);
+}
+
+.cm-page::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='1200' height='760' viewBox='0 0 1200 760' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23d4af37' stroke-width='10' stroke-linecap='round' stroke-linejoin='round' opacity='.62'%3E%3Cpath d='M130 590h300M170 590V430l110-118 110 118v160M205 590V455l75-78 75 78v135M155 430h250M230 590V495h100v95'/%3E%3Cpath d='M800 550c75-10 122-44 145-100 16 30 42 52 83 64 34 10 67 9 102-2M732 552c52-74 92-115 120-123 30-8 55 4 76 36M870 430l-22-64 56 28 52-30-16 68M828 552l-40 92M938 520l-20 112M1018 520l28 104M1078 512l42 84'/%3E%3Cpath d='M642 148c80 38 137 94 170 168M602 178c82 46 134 104 157 173M558 212c78 48 125 104 142 168'/%3E%3Cpath d='M103 190c42-64 96-98 160-101 60-3 112 21 156 72'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: left -130px bottom -80px, right -160px top 80px;
+  background-size: min(1050px, 90vw) auto;
+  opacity: 0.16;
+  filter: blur(5px);
+  transform: translateZ(0);
+}
+
+.cm-page > * {
+  position: relative;
+  z-index: 1;
 }
 
 .cm-panel,
@@ -786,6 +807,25 @@ button:hover .piece-token .piece {
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.06), transparent 18%, rgba(0, 0, 0, 0.14) 42%, transparent 68%),
     linear-gradient(135deg, #b45309, #3f2416);
+}
+
+.chaos-store-tengri {
+  background:
+    radial-gradient(circle at 24% 20%, rgba(236, 254, 255, 0.72), transparent 24%),
+    linear-gradient(135deg, #0ea5e9, #075985 58%, #022c44);
+}
+
+.chaos-store-steppe {
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.14), transparent 28%),
+    linear-gradient(135deg, #f5d48b, #a16207 55%, #292524);
+}
+
+.chaos-store-yurt {
+  background:
+    radial-gradient(circle at 50% 16%, rgba(255, 247, 237, 0.54), transparent 22%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0 8px, transparent 8px 18px),
+    linear-gradient(135deg, #7f1d1d, #f1c27d 48%, #451a03);
 }
 
 .chaos-store-royal {

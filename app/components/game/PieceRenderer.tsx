@@ -88,6 +88,24 @@ function piecePalette(skin: Skin, color: Color) {
       : { top: "#7c4a2d", bottom: "#27150c", stroke: "#0c0a09", glow: "rgba(120,53,15,0.58)" };
   }
 
+  if (skin === "tengri") {
+    return color === "w"
+      ? { top: "#ecfeff", bottom: "#22d3ee", stroke: "#075985", glow: "rgba(34,211,238,0.68)" }
+      : { top: "#0ea5e9", bottom: "#082f49", stroke: "#020617", glow: "rgba(56,189,248,0.58)" };
+  }
+
+  if (skin === "steppe") {
+    return color === "w"
+      ? { top: "#fef3c7", bottom: "#d6a84f", stroke: "#7c4a03", glow: "rgba(245,158,11,0.5)" }
+      : { top: "#78716c", bottom: "#1c1917", stroke: "#030712", glow: "rgba(180,83,9,0.54)" };
+  }
+
+  if (skin === "yurt") {
+    return color === "w"
+      ? { top: "#fff7ed", bottom: "#e7c79b", stroke: "#854d0e", glow: "rgba(253,186,116,0.52)" }
+      : { top: "#991b1b", bottom: "#260909", stroke: "#030712", glow: "rgba(220,38,38,0.56)" };
+  }
+
   return color === "w"
     ? { top: "#ffffff", bottom: "#d9d9d9", stroke: "#7b6a48", glow: "rgba(255,255,255,0.46)" }
     : { top: "#4b5563", bottom: "#111827", stroke: "#05070d", glow: "rgba(212,175,55,0.34)" };

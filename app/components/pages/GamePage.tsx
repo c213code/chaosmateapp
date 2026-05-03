@@ -141,6 +141,30 @@ export default function GamePage({ profile }: GamePageProps) {
           </div>
         </section>
 
+        <section className="cm-panel mb-8 overflow-hidden p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-xs font-black uppercase tracking-[0.3em] text-[#d4af37]">Tournament announcement</p>
+              <h2 className="mt-3 text-3xl font-black text-white">Weekend Arena unlocks at 100 players</h2>
+              <p className="mt-3 text-base leading-7 text-white/62">
+                When ChaosMate reaches 100 active players, we will launch weekly Friday, Saturday, and Sunday tournaments with a serious prize pool, live brackets, city rankings, coins, and exclusive champion badges.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[430px]">
+              <TournamentStat label="Entry" value="$2.99" detail="or 500 coins" />
+              <TournamentStat label="Champion" value="$50+" detail="or 5000 coins" />
+              <TournamentStat label="Target" value="100" detail="active players" />
+            </div>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {["Realtime bracket", "Weekend finals", "Kazakhstan city leaderboard", "Founder badge"].map((item) => (
+              <span key={item} className="rounded-full border border-[#d4af37]/25 bg-[#d4af37]/10 px-3 py-2 text-xs font-bold text-[#f7d96b]">
+                {item}
+              </span>
+            ))}
+          </div>
+        </section>
+
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <section className="lg:col-span-2">
             <div className="mb-4 flex items-end justify-between gap-4">
@@ -198,6 +222,16 @@ export default function GamePage({ profile }: GamePageProps) {
         </div>
       </div>
     </main>
+  );
+}
+
+function TournamentStat({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-md border border-white/10 bg-black/22 p-4">
+      <p className="text-xs uppercase tracking-[0.18em] text-white/38">{label}</p>
+      <p className="mt-2 text-2xl font-black text-[#b8ff38]">{value}</p>
+      <p className="mt-1 text-xs font-bold text-white/48">{detail}</p>
+    </div>
   );
 }
 

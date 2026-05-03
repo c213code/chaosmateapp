@@ -1,14 +1,28 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAuthProfile } from "@/app/components/auth/useAuthProfile";
 import AuthPage from "@/app/components/pages/AuthPage";
 import ClassicVsAI from "@/app/components/game/ClassicVsAI";
 import VariantChessGame from "@/app/components/game/VariantChessGame";
 import ThemeToggle from "@/app/components/ThemeToggle";
+import { loadInventory } from "@/app/lib/progression";
 import type { GameMode } from "@/app/lib/chess-platform";
 
 export default function GameRoutePage({ mode }: { mode: GameMode }) {
   const { user, profile, setProfile, loading, profileReady } = useAuthProfile();
+  const [hasSubscription, setHasSubscription] = useState(false);
+
+  useEffect(() => {
+    if (!profile) {
+      return;
+    }
+
+    const syncSubscription = () => setHasSubscription(loadInventory(profile.id).hasPass);
+    syncSubscription();
+    window.addEventListener("chaosmate-inventory-change", syncSubscription);
+    return () => window.removeEventListener("chaosmate-inventory-change", syncSubscription);
+  }, [profile]);
 
   if (loading) {
     return (
@@ -62,7 +76,16 @@ export default function GameRoutePage({ mode }: { mode: GameMode }) {
       </nav>
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {mode === "classic-ai" ? (
+        {(mode === "blind" || mode === "roulette") && !hasSubscription ? (
+          <div className="cm-panel mx-auto max-w-2xl p-8 text-center">
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#d4af37]">Subscription required</p>
+            <h1 className="mt-3 text-4xl font-black">{mode === "blind" ? "Blind Chess" : "Chess Roulette"} is locked</h1>
+            <p className="mt-3 text-white/58">Activate the free TESTER subscription in the shop to unlock and test this viral Pro mode.</p>
+            <a href="/shop" className="cm-button mt-6 px-6 py-3 font-black">
+              Open Shop
+            </a>
+          </div>
+        ) : mode === "classic-ai" ? (
           <ClassicVsAI user={user} profile={profile} setProfile={setProfile} />
         ) : mode === "online" ? (
           <VariantChessGame mode="local" user={user} profile={profile} setProfile={setProfile} aiOpponent={false} />

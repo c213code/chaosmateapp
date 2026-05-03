@@ -58,7 +58,7 @@ end $$;
 
 alter table public.games
   add constraint games_mode_check
-  check (mode in ('classic','local_multiplayer','switch','switch_places','fog','fog_of_war','chaos','chaos_mode','team','team_2v2','speed','speed_chess'));
+  check (mode in ('classic','local_multiplayer','switch','switch_places','fog','fog_of_war','chaos','chaos_mode','team','team_2v2','speed','speed_chess','blind','blind_chess','roulette','chess_roulette'));
 
 alter table public.games
   drop constraint if exists games_ai_difficulty_check;

@@ -45,10 +45,24 @@ const modeCopy: Record<Exclude<GameMode, "classic-ai" | "online">, { title: stri
     subtitle: "Seats split control of major and minor pieces on each side.",
     dbMode: "team_2v2",
   },
+  blind: {
+    title: "Blind Chess",
+    subtitle: "Peek for 3 seconds, then type moves from memory.",
+    dbMode: "blind_chess",
+  },
+  roulette: {
+    title: "Chess Roulette",
+    subtitle: "Random events hit the board every 7-10 moves.",
+    dbMode: "chess_roulette",
+  },
 };
 
 function randomSwitchCountdown() {
   return 5 + Math.floor(Math.random() * 6);
+}
+
+function randomRouletteCountdown() {
+  return 7 + Math.floor(Math.random() * 4);
 }
 
 export default function VariantChessGame({
@@ -91,6 +105,12 @@ export default function VariantChessGame({
   const [blackMs, setBlackMs] = useState(180000);
   const [teamSeat, setTeamSeat] = useState<TeamSeat>("white-major");
   const [aiThinking, setAiThinking] = useState(false);
+  const [blindInput, setBlindInput] = useState("");
+  const [blindVisible, setBlindVisible] = useState(true);
+  const [blindPenalty, setBlindPenalty] = useState<Square | null>(null);
+  const [rouletteCountdown, setRouletteCountdown] = useState(() => randomRouletteCountdown());
+  const [rouletteEvent, setRouletteEvent] = useState("No event yet.");
+  const [ghostSquare, setGhostSquare] = useState<Square | null>(null);
   const finalizedRef = useRef(false);
   const timerStartedRef = useRef(false);
   const aiFenRef = useRef<string | null>(null);
@@ -101,7 +121,7 @@ export default function VariantChessGame({
   const legalTargets = selected ? game.moves({ square: selected, verbose: true }).map((move) => move.to) : [];
   const lastMove = history.at(-1);
   const queenThreat = getQueenThreat(game, turn);
-  const hiddenSquares = mode === "fog" ? getHiddenSquares(game, turn) : [];
+  const hiddenSquares = mode === "fog" ? getHiddenSquares(game, turn) : ghostSquare ? [ghostSquare] : [];
   const playerColor = onlineRoomId ? onlinePlayerColor || "w" : mode === "switch" ? switchControl : "w";
   const controlledColor = onlinePlayerColor || playerColor;
   const mustControlSpecificColor = Boolean(onlinePlayerColor || aiOpponent || mode === "switch");
@@ -237,6 +257,16 @@ export default function VariantChessGame({
   }, [onlineRoomId]);
 
   useEffect(() => {
+    if (mode !== "blind" || !gameId || result) {
+      return;
+    }
+
+    setBlindVisible(true);
+    const timer = window.setTimeout(() => setBlindVisible(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [fen, gameId, mode, result]);
+
+  useEffect(() => {
     if (mode !== "speed" || result || !timerStartedRef.current) {
       return;
     }
@@ -333,6 +363,12 @@ export default function VariantChessGame({
     setChaosHistory([]);
     setChaosCountdown(6);
     setTeamSeat("white-major");
+    setBlindInput("");
+    setBlindVisible(true);
+    setBlindPenalty(null);
+    setRouletteCountdown(randomRouletteCountdown());
+    setRouletteEvent("No event yet.");
+    setGhostSquare(null);
     setWhiteMs(speedPreset === "bullet" ? 30000 : 180000);
     setBlackMs(speedPreset === "bullet" ? 30000 : 180000);
     setGameId(`local-${mode}`);
@@ -397,7 +433,7 @@ export default function VariantChessGame({
   }
 
   function handleSquare(square: Square) {
-    if (!gameId || result || switching || aiThinking || !isPlayerTurn) {
+    if (!gameId || result || switching || aiThinking || !isPlayerTurn || mode === "blind") {
       return;
     }
 
@@ -425,6 +461,58 @@ export default function VariantChessGame({
 
     const piece = game.get(square);
     setSelected(piece?.color === turn && canMoveSquare(game, square, mode, teamSeat) ? square : null);
+  }
+
+  function submitBlindMove() {
+    const cleaned = blindInput.trim().toLowerCase().replace(/[^a-h1-8qrbn]/g, "");
+    const from = cleaned.slice(0, 2) as Square;
+    const to = cleaned.slice(2, 4) as Square;
+    const promotion = (cleaned[4] || "q") as PieceSymbol;
+    setBlindInput("");
+
+    if (!gameId || result || switching || aiThinking || cleaned.length < 4) {
+      setMessage("Blind Chess: type a move like e2e4 or e7e8q.");
+      return;
+    }
+
+    if (!playMove(from, to, promotion)) {
+      const penalty = removeRandomOwnPiece(game, turn);
+      if (!penalty) {
+        setMessage("Blind penalty failed: no removable piece was available.");
+        return;
+      }
+      setBlindPenalty(penalty);
+      setFen(game.fen());
+      setSelected(null);
+      setMessage(`Wrong blind move. Penalty: ${turn === "w" ? "White" : "Black"} lost a piece on ${penalty}.`);
+      window.setTimeout(() => setBlindPenalty(null), 1400);
+      persistGame(game, history, "active");
+    }
+  }
+
+  async function triggerPaidRoulette() {
+    if (mode !== "roulette" || result || !gameId) {
+      return;
+    }
+
+    if (profile.coins < 50) {
+      setMessage("Need 50 coins to trigger Chess Roulette manually.");
+      return;
+    }
+
+    const nextProfile = { ...profile, coins: profile.coins - 50 };
+    setProfile(nextProfile);
+    if (supabase) {
+      await supabase.from("users").update({ coins: nextProfile.coins }).eq("id", profile.id);
+    }
+
+    const rouletteGame = new Chess(fen);
+    const event = applyRouletteEvent(rouletteGame, turn);
+    setFen(rouletteGame.fen());
+    setRouletteEvent(event.message);
+    setGhostSquare(event.ghostSquare || null);
+    setMessage(`Paid roulette: ${event.message}`);
+    persistGame(rouletteGame, history, "active");
   }
 
   function playMove(from: Square, to: Square, promotionPiece: PieceSymbol = "q", fromAI = false) {
@@ -474,6 +562,20 @@ export default function VariantChessGame({
         }
       } else {
         setChaosCountdown(nextChaosCountdown);
+      }
+    }
+
+    if (mode === "roulette") {
+      const nextRouletteCountdown = rouletteCountdown - 1;
+      if (nextRouletteCountdown <= 0) {
+        const event = applyRouletteEvent(nextGame, nextTurn);
+        nextFen = nextGame.fen();
+        setRouletteCountdown(randomRouletteCountdown());
+        setRouletteEvent(event.message);
+        setGhostSquare(event.ghostSquare || null);
+        nextMessage = `Roulette event: ${event.message}`;
+      } else {
+        setRouletteCountdown(nextRouletteCountdown);
       }
     }
 
@@ -705,10 +807,15 @@ export default function VariantChessGame({
                   <option value="blitz">Blitz 3m</option>
                 </select>
               )}
-              {mode === "team" && (
+            {mode === "team" && (
                 <span className="rounded-md border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-2 text-sm font-black text-[#f7d96b]">
                   {teamSeatTitle(teamSeat)}
                 </span>
+              )}
+              {mode === "roulette" && (
+                <button onClick={triggerPaidRoulette} disabled={!gameId || Boolean(result)} className="rounded-md border border-[#d4af37]/45 px-4 py-2 text-sm font-black text-[#f7d96b] disabled:opacity-40">
+                  Spin 50 coins
+                </button>
               )}
               {canStartOnlineRoom ? (
                 <button onClick={startGame} className="cm-button px-4 py-2 text-sm font-black">
@@ -765,19 +872,30 @@ export default function VariantChessGame({
             </div>
           )}
           <div className={mode === "switch" && switching ? "local-board-flipping" : ""}>
-            <ChessBoard
-              game={game}
-              orientation={orientation}
-              selected={selected}
-              legalMoves={legalTargets}
-              movableSquares={movableSquares}
-              lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
-              threatSquares={queenThreat ? [queenThreat.queenSquare, ...queenThreat.attackers] : []}
-              hiddenSquares={hiddenSquares}
-              skin={profile.skin_equipped || "classic"}
-              boardTheme={inventory.equippedBoard}
-              onSquare={handleSquare}
-            />
+            <div className="relative">
+              <ChessBoard
+                game={game}
+                orientation={orientation}
+                selected={selected}
+                legalMoves={legalTargets}
+                movableSquares={movableSquares}
+                lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
+                threatSquares={queenThreat ? [queenThreat.queenSquare, ...queenThreat.attackers] : []}
+                hiddenSquares={hiddenSquares}
+                skin={profile.skin_equipped || "classic"}
+                boardTheme={inventory.equippedBoard}
+                onSquare={handleSquare}
+              />
+              {mode === "blind" && !blindVisible && (
+                <div className="absolute inset-2 z-20 grid place-items-center rounded-[22px] bg-[#020617]/92 backdrop-blur-md">
+                  <div className="px-6 text-center">
+                    <p className="text-5xl font-black text-[#d4af37]">BLIND</p>
+                    <p className="mt-3 text-sm font-bold uppercase tracking-[0.24em] text-white/58">Type your move from memory</p>
+                    {blindPenalty && <p className="mt-3 text-red-200">Penalty on {blindPenalty}</p>}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -802,8 +920,36 @@ export default function VariantChessGame({
             )}
             {mode === "team" && <State label="Seat" value={seatLabel(teamSeat)} />}
             {mode === "fog" && <State label="Fog" value={`${hiddenSquares.length} hidden`} />}
+            {mode === "blind" && <State label="Board" value={blindVisible ? "Visible" : "Hidden"} />}
+            {mode === "roulette" && <State label="Next event" value={`${rouletteCountdown} moves`} />}
           </div>
           <p className="mt-4 rounded-md border border-white/10 bg-black/20 p-3 text-sm leading-6 text-white/70">{message}</p>
+          {mode === "blind" && (
+            <div className="mt-4 rounded-md border border-white/10 bg-white/5 p-3">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/38">Blind move input</p>
+              <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+                <input
+                  value={blindInput}
+                  onChange={(event) => setBlindInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      submitBlindMove();
+                    }
+                  }}
+                  placeholder="e2e4"
+                  className="rounded-md border border-white/10 bg-[#0f172a] px-3 py-3 font-mono text-white placeholder:text-white/30"
+                />
+                <button onClick={submitBlindMove} className="rounded-md bg-[#b8ff38] px-4 py-3 font-black text-black">
+                  Move
+                </button>
+              </div>
+            </div>
+          )}
+          {mode === "roulette" && (
+            <p className="mt-3 rounded-md border border-fuchsia-300/25 bg-fuchsia-300/10 p-3 text-sm leading-6 text-fuchsia-50">
+              Last roulette: {rouletteEvent}
+            </p>
+          )}
           {!selected && movableSquares.length > 0 && <p className="mt-3 text-xs leading-5 text-white/50">Подсвеченные фигуры могут ходить. Нажми на фигуру, потом на зеленую клетку.</p>}
           {aiOpponent && !isPlayerTurn && !result && <p className="mt-3 text-xs leading-5 text-[#86efac]">Сейчас ход AI. Доска заблокирована до ответа.</p>}
           {queenThreat && <p className="mt-3 rounded-md border border-amber-300/35 bg-amber-300/12 p-3 text-sm text-amber-100">Queen threat: {queenThreat.attackers.join(", ")} attacking {queenThreat.queenSquare}.</p>}
@@ -933,6 +1079,77 @@ function forceFenTurn(fen: string, color: Color) {
   return parts.join(" ");
 }
 
+function removeRandomOwnPiece(game: Chess, color: Color) {
+  const pieces = game
+    .board()
+    .flat()
+    .filter((piece) => piece && piece.color === color && piece.type !== "k");
+  const target = pieces[Math.floor(Math.random() * pieces.length)];
+
+  if (!target) {
+    return null;
+  }
+
+  game.remove(target.square);
+  return target.square;
+}
+
+function applyRouletteEvent(game: Chess, currentTurn: Color): { message: string; ghostSquare?: Square } {
+  const effects = ["tornado", "ghost", "swap", "bomb", "reverse"] as const;
+  const effect = effects[Math.floor(Math.random() * effects.length)];
+  const opponent = currentTurn === "w" ? "b" : "w";
+
+  if (effect === "bomb") {
+    const square = removeRandomOwnPiece(game, opponent);
+    return { message: square ? `BOMB: opponent piece exploded on ${square}.` : "BOMB fizzled: no target was available." };
+  }
+
+  if (effect === "ghost") {
+    const pieces = game
+      .board()
+      .flat()
+      .filter((piece) => piece && piece.color === opponent && piece.type !== "k");
+    const target = pieces[Math.floor(Math.random() * pieces.length)];
+    return { message: target ? `GHOST MODE: opponent piece on ${target.square} is invisible for now.` : "GHOST MODE fizzled: no target was available.", ghostSquare: target?.square };
+  }
+
+  if (effect === "swap") {
+    const queen = findPieceSquare(game, currentTurn, "q");
+    const king = findPieceSquare(game, currentTurn, "k");
+    if (!queen || !king) {
+      return { message: "SWAP PIECES fizzled: king or queen was missing." };
+    }
+
+    game.remove(queen);
+    game.remove(king);
+    game.put({ type: "q", color: currentTurn }, king);
+    game.put({ type: "k", color: currentTurn }, queen);
+    return { message: `SWAP PIECES: your king and queen swapped ${king} ↔ ${queen}.` };
+  }
+
+  if (effect === "tornado") {
+    const events = (["w", "b"] as Color[])
+      .map((color) => teleportOpponentPiece(game, color))
+      .filter((event): event is NonNullable<typeof event> => Boolean(event));
+
+    return {
+      message: events.length
+        ? `TORNADO: ${events.map((event) => `${pieceName(event.piece)} ${event.from} to ${event.to}`).join(", ")}.`
+        : "TORNADO fizzled: no movable target was found.",
+    };
+  }
+
+  const last = game.history().at(-1);
+  return { message: last ? `REVERSE: chaos echoes the last move ${last} in reverse energy.` : "REVERSE is charging for the next move." };
+}
+
+function findPieceSquare(game: Chess, color: Color, type: PieceSymbol) {
+  return game
+    .board()
+    .flat()
+    .find((piece) => piece && piece.color === color && piece.type === type)?.square;
+}
+
 function chooseAiMove(game: Chess) {
   const moves = game.moves({ verbose: true });
 
@@ -1052,6 +1269,12 @@ function modeNote(mode: GameMode) {
   if (mode === "team") {
     return "Use the seat selector to play as the teammate who controls the current piece group.";
   }
+  if (mode === "blind") {
+    return "The board is visible for 3 seconds after each position update. Type legal moves from memory. Wrong input removes one of your non-king pieces.";
+  }
+  if (mode === "roulette") {
+    return "Every 7-10 moves, Chess Roulette triggers a random board event. You can also spend 50 coins to spin immediately.";
+  }
   return "Standard local chess with full chess.js validation.";
 }
 
@@ -1074,6 +1297,14 @@ function modeHelp(mode: GameMode) {
 
   if (mode === "team") {
     return ["Pick the active seat", "A controls pawns/rooks/queen", "B controls knights/bishops/king"];
+  }
+
+  if (mode === "blind") {
+    return ["3-second peek", "Type e2e4", "Wrong move loses a piece"];
+  }
+
+  if (mode === "roulette") {
+    return ["Event every 7-10 moves", "Spin for 50 coins", "Bomb / Ghost / Tornado"];
   }
 
   return ["White moves first", "Click piece, then green square", "All rules by chess.js"];

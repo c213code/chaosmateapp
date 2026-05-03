@@ -68,12 +68,14 @@ const modes = [
 const proModes = [
   {
     title: "Blind Chess",
+    href: "/game/blind-chess",
     icon: "🙈",
     description: "Memorize the board for 3 seconds, then play by typing moves from memory. Wrong moves create penalties.",
     tags: ["Viral", "Memory", "Pro"],
   },
   {
     title: "Chess Roulette",
+    href: "/game/chess-roulette",
     icon: "🎲",
     description: "Every 7-10 moves a wild event can hit: tornado, ghost piece, time swap, bomb, or reverse chaos.",
     tags: ["WTF moments", "Coins", "Pro"],
@@ -292,9 +294,9 @@ function TournamentStat({ label, value, detail }: { label: string; value: string
   );
 }
 
-function ProModeCard({ title, icon, description, tags, unlocked }: { title: string; icon: string; description: string; tags: string[]; unlocked: boolean }) {
+function ProModeCard({ title, href, icon, description, tags, unlocked }: { title: string; href: string; icon: string; description: string; tags: string[]; unlocked: boolean }) {
   return (
-    <a href="/shop" className="cm-card group relative block overflow-hidden p-5 transition duration-300 hover:-translate-y-1 hover:border-[#d4af37]/55">
+    <a href={unlocked ? href : "/shop"} className="cm-card group relative block overflow-hidden p-5 transition duration-300 hover:-translate-y-1 hover:border-[#d4af37]/55">
       <div className="absolute right-4 top-4 rounded-full border border-[#d4af37]/30 bg-[#d4af37]/10 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-[#f7d96b]">
         {unlocked ? "Pro active" : "Locked"}
       </div>

@@ -8,7 +8,9 @@ export type GameMode =
   | "fog"
   | "chaos"
   | "speed"
-  | "team";
+  | "team"
+  | "blind"
+  | "roulette";
 
 export type Difficulty = "Easy" | "Medium" | "Hard";
 export type Skin = "classic" | "neon" | "gold" | "wood" | "tengri" | "steppe" | "yurt";
@@ -96,6 +98,20 @@ export const modeMeta: Record<
     description: "Teams split command of pawns, rooks, queens, bishops, knights, and kings.",
     ranked: true,
     accent: "from-[#f0abfc] to-[#38bdf8]",
+  },
+  blind: {
+    title: "Blind Chess",
+    eyebrow: "Memory mode",
+    description: "The board disappears after a short peek. Type moves from memory.",
+    ranked: true,
+    accent: "from-[#facc15] to-[#111827]",
+  },
+  roulette: {
+    title: "Chess Roulette",
+    eyebrow: "Random events",
+    description: "Every few moves a wild event changes the board mid-game.",
+    ranked: true,
+    accent: "from-[#f97316] to-[#ec4899]",
   },
 };
 

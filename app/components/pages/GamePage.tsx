@@ -152,14 +152,11 @@ export default function GamePage({ profile }: GamePageProps) {
               <p className="mt-3 rounded-md border border-[#4ade80]/25 bg-[#4ade80]/10 p-3 text-sm font-bold leading-6 text-[#bbf7d0]">
                 Invite a friend to ChaosMate and get 1 free tournament entry when the arena opens.
               </p>
-              <p className="mt-3 rounded-md border border-[#d4af37]/30 bg-[#d4af37]/10 p-3 text-sm font-bold leading-6 text-[#f7d96b]">
-                May 19, 2026: offline super tournament with a very big prize pool. Qualification: ChaosMate ELO 2000+.
-              </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[430px]">
               <TournamentStat label="Entry" value="$2.99" detail="or 500 coins" />
               <TournamentStat label="Champion" value="$50+" detail="or 5000 coins" />
-              <TournamentStat label="Offline" value="May 19" detail="ELO 2000+ only" />
+              <TournamentStat label="Target" value="100" detail="active players" />
             </div>
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
@@ -168,6 +165,13 @@ export default function GamePage({ profile }: GamePageProps) {
                 {item}
               </span>
             ))}
+          </div>
+          <div className="mt-6 rounded-xl border border-[#d4af37]/35 bg-[radial-gradient(circle_at_10%_20%,rgba(212,175,55,0.22),transparent_30%),linear-gradient(135deg,rgba(212,175,55,0.12),rgba(0,0,0,0.18))] p-5">
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#d4af37]">Separate offline event</p>
+            <h3 className="mt-2 text-2xl font-black text-white">May 19, 2026: VERY BIG offline tournament</h3>
+            <p className="mt-2 text-sm font-bold leading-6 text-white/68">
+              This is not the weekly arena. It is a separate high-stakes offline tournament with a much bigger prize pool. To participate, players must reach ChaosMate ELO 2000+.
+            </p>
           </div>
         </section>
 

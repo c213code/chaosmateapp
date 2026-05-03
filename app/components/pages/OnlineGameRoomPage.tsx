@@ -6,7 +6,7 @@ import AuthPage from "@/app/components/pages/AuthPage";
 import VariantChessGame from "@/app/components/game/VariantChessGame";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import { getOnlineRoom, joinOnlineRoom, supabase, type OnlineRoom, type RoomPlayer } from "@/app/lib/supabase";
-import { getRoomSocket, normalizeRoomCode, type SocketRoom } from "@/app/lib/socketRooms";
+import { getRoomSocket, isSocketRoomCode, normalizeRoomCode, type SocketRoom } from "@/app/lib/socketRooms";
 import type { GameMode } from "@/app/lib/chess-platform";
 
 const routeModeByRoomMode: Record<string, Exclude<GameMode, "classic-ai" | "online">> = {
@@ -34,7 +34,8 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
     }
 
     let alive = true;
-    const socket = getRoomSocket();
+    const useSocketRoom = isSocketRoomCode(roomId);
+    const socket = useSocketRoom ? getRoomSocket() : null;
     const normalizedRoomId = normalizeRoomCode(roomId);
 
     async function loadRoom() {
@@ -64,29 +65,31 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
       setMessage("Backend WebSocket room ready.");
     };
 
-    socket.on("rooms:update", handleState);
-    socket.on("game:state", handleState);
-    socket.emit("rooms:join", { roomId: normalizedRoomId, userId: user.id }, (response: { room?: SocketRoom; seat?: string; error?: string }) => {
-      if (!alive) {
-        return;
-      }
-      if (response?.room) {
-        setSocketRoom(response.room);
-        setSocketSeat(response.seat || null);
-        setMessage("Backend WebSocket room joined.");
-      } else if (response?.error) {
-        setMessage(response.error);
-      }
-    });
-    socket.emit("game:sync", { roomId: normalizedRoomId });
+    if (socket) {
+      socket.on("rooms:update", handleState);
+      socket.on("game:state", handleState);
+      socket.emit("rooms:join", { roomId: normalizedRoomId, userId: user.id }, (response: { room?: SocketRoom; seat?: string; error?: string }) => {
+        if (!alive) {
+          return;
+        }
+        if (response?.room) {
+          setSocketRoom(response.room);
+          setSocketSeat(response.seat || null);
+          setMessage("Backend WebSocket room joined.");
+        } else if (response?.error) {
+          setMessage(response.error);
+        }
+      });
+      socket.emit("game:sync", { roomId: normalizedRoomId });
+    }
 
     const client = supabase;
 
     if (!client) {
       return () => {
         alive = false;
-        socket.off("rooms:update", handleState);
-        socket.off("game:state", handleState);
+        socket?.off("rooms:update", handleState);
+        socket?.off("game:state", handleState);
       };
     }
 
@@ -99,8 +102,8 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
     return () => {
       alive = false;
       client.removeChannel(channel);
-      socket.off("rooms:update", handleState);
-      socket.off("game:state", handleState);
+      socket?.off("rooms:update", handleState);
+      socket?.off("game:state", handleState);
     };
   }, [loading, roomId, user]);
 
@@ -150,6 +153,8 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
   const playerColor = currentSeat?.startsWith("black") ? "b" : currentSeat?.startsWith("white") || room?.created_by === user.id ? "w" : null;
   const joined = Boolean(currentSeat);
   const full = Number(socketRoom?.currentPlayers || room?.current_players || players.length) >= Number(socketRoom?.maxPlayers || room?.max_players || 2);
+  const roomCode = socketRoom?.code || room?.id.slice(0, 8).toUpperCase() || roomId.slice(0, 8).toUpperCase();
+  const fullRoomId = socketRoom?.code || room?.id || roomId;
 
   return (
     <main className="cm-page min-h-screen text-white">
@@ -176,7 +181,17 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
               <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#d4af37]">Realtime room</p>
               <h1 className="mt-2 text-3xl font-black">{activeRoomMode.replace(/_/g, " ").toUpperCase() || "Online Game"}</h1>
               <p className="mt-2 text-sm text-white/55">{message}</p>
-              {socketRoom && <p className="mt-2 font-mono text-lg font-black text-[#d4af37]">Code {socketRoom.code}</p>}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="rounded-md border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-2 font-mono text-sm font-black text-[#f7d96b]">
+                  Room {roomCode}
+                </span>
+                <button
+                  onClick={() => navigator.clipboard?.writeText(fullRoomId)}
+                  className="rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs font-bold text-white/64 hover:text-white"
+                >
+                  Copy ID
+                </button>
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/65">
@@ -199,7 +214,7 @@ export default function OnlineGameRoomPage({ roomId }: { roomId: string }) {
           </div>
         </section>
 
-        <VariantChessGame mode={variantMode} user={user} profile={profile} setProfile={setProfile} onlineRoomId={normalizeRoomCode(roomId)} onlinePlayerColor={playerColor || undefined} />
+        <VariantChessGame mode={variantMode} user={user} profile={profile} setProfile={setProfile} onlineRoomId={roomId} onlinePlayerColor={playerColor || undefined} />
       </div>
     </main>
   );

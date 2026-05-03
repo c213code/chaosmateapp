@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import AuthPage from "@/app/components/pages/AuthPage";
 import { useAuthProfile } from "@/app/components/auth/useAuthProfile";
 import { createOnlineRoom, getOnlineRooms, joinOnlineRoom, supabase, type OnlineRoom } from "@/app/lib/supabase";
-import { getRoomSocket, normalizeRoomCode, type SocketRoom } from "@/app/lib/socketRooms";
+import { getRoomSocket, isSocketRoomCode, normalizeRoomCode, type SocketRoom } from "@/app/lib/socketRooms";
 
 const onlineModes = [
   { value: "classic", label: "Classic" },
@@ -177,25 +177,39 @@ export default function OnlineRoomsPage() {
       return;
     }
 
-    const code = normalizeRoomCode(joinCode);
-    if (!code) {
-      setError("Enter a room code first.");
+    const target = parseRoomTarget(joinCode);
+    if (!target) {
+      setError("Enter a room code or room link first.");
       return;
     }
 
     setBusy(true);
-    const socket = getRoomSocket();
-    const response = await new Promise<{ room?: SocketRoom; seat?: string; error?: string }>((resolve) => {
-      socket.timeout(3500).emit("rooms:join", { roomId: code, userId: user.id }, (err: Error | null, value: { room?: SocketRoom; seat?: string; error?: string }) => resolve(err ? { error: err.message } : value));
-    });
-    setBusy(false);
+    if (isSocketRoomCode(target)) {
+      const code = normalizeRoomCode(target);
+      const socket = getRoomSocket();
+      const response = await new Promise<{ room?: SocketRoom; seat?: string; error?: string }>((resolve) => {
+        socket.timeout(3500).emit("rooms:join", { roomId: code, userId: user.id }, (err: Error | null, value: { room?: SocketRoom; seat?: string; error?: string }) => resolve(err ? { error: err.message } : value));
+      });
+      setBusy(false);
 
-    if (response.error) {
-      setError(response.error);
+      if (response.error) {
+        setError(response.error);
+        return;
+      }
+
+      window.location.href = `/game/online/${code}`;
       return;
     }
 
-    window.location.href = `/game/online/${code}`;
+    const { error } = await joinOnlineRoom(target, user.id, "black");
+    setBusy(false);
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    window.location.href = `/game/online/${target}`;
   }
 
   return (
@@ -250,12 +264,12 @@ export default function OnlineRoomsPage() {
                 />
               )}
               <button onClick={handleCreateRoom} disabled={busy} className="cm-button w-full px-4 py-3 font-black disabled:opacity-50">
-                {busy ? "Working..." : "+ Create Backend Room"}
+                {busy ? "Working..." : "+ Create Online Room"}
               </button>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/40">Join by code</p>
                 <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
-                  <input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} placeholder="3MSWM9" className="rounded-md border border-white/10 bg-[#0f172a] px-3 py-3 font-mono text-white placeholder:text-white/25" />
+                  <input value={joinCode} onChange={(event) => setJoinCode(event.target.value)} placeholder="room code or link" className="rounded-md border border-white/10 bg-[#0f172a] px-3 py-3 font-mono text-white placeholder:text-white/25" />
                   <button onClick={joinByCode} disabled={busy} className="rounded-md bg-[#b8ff38] px-4 py-3 font-black text-black disabled:opacity-45">
                     Join
                   </button>
@@ -283,6 +297,20 @@ export default function OnlineRoomsPage() {
       </div>
     </main>
   );
+}
+
+function parseRoomTarget(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  try {
+    const url = new URL(trimmed);
+    return url.pathname.split("/").filter(Boolean).at(-1) || "";
+  } catch {
+    return trimmed.split("/").filter(Boolean).at(-1) || trimmed;
+  }
 }
 
 function RoomCard({ room, onJoin, busy }: { room: DisplayRoom; onJoin: () => void; busy: boolean }) {

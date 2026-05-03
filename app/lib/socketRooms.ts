@@ -40,3 +40,8 @@ export function getRoomSocket() {
 export function normalizeRoomCode(value: string) {
   return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
+
+export function isSocketRoomCode(value: string) {
+  const code = normalizeRoomCode(value);
+  return code.length >= 4 && code.length <= 8 && code === value.trim().replace(/\s/g, "").toUpperCase();
+}

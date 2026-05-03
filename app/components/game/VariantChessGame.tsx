@@ -9,7 +9,7 @@ import { calculateElo, getGameResult, getMovableSquares, getQueenThreat, makeMov
 import { ensureUserProfileForGames, isForeignKeyError, supabase } from "@/app/lib/supabase";
 import type { ChaosMateUser, Profile } from "@/app/lib/types";
 import { applyTheme, loadInventory, type InventoryState } from "@/app/lib/progression";
-import { getRoomSocket, type SocketRoom } from "@/app/lib/socketRooms";
+import { getRoomSocket, isSocketRoomCode, normalizeRoomCode, type SocketRoom } from "@/app/lib/socketRooms";
 
 type PromotionState = { from: Square; to: Square } | null;
 type Outcome = "white_win" | "black_win" | "draw" | "resigned";
@@ -96,12 +96,13 @@ export default function VariantChessGame({
   const aiFenRef = useRef<string | null>(null);
 
   const game = useMemo(() => new Chess(fen), [fen]);
+  const socketRoomId = onlineRoomId && isSocketRoomCode(onlineRoomId) ? normalizeRoomCode(onlineRoomId) : null;
   const turn = game.turn();
   const legalTargets = selected ? game.moves({ square: selected, verbose: true }).map((move) => move.to) : [];
   const lastMove = history.at(-1);
   const queenThreat = getQueenThreat(game, turn);
   const hiddenSquares = mode === "fog" ? getHiddenSquares(game, turn) : [];
-  const playerColor = mode === "switch" ? switchControl : "w";
+  const playerColor = onlineRoomId ? onlinePlayerColor || "w" : mode === "switch" ? switchControl : "w";
   const controlledColor = onlinePlayerColor || playerColor;
   const mustControlSpecificColor = Boolean(onlinePlayerColor || aiOpponent || mode === "switch");
   const isPlayerTurn = onlineRoomId ? Boolean(onlinePlayerColor && turn === onlinePlayerColor) : !aiOpponent || turn === playerColor;
@@ -135,18 +136,21 @@ export default function VariantChessGame({
   useEffect(() => {
     if (onlineRoomId) {
       setGameId(`online-${onlineRoomId}`);
+      if (onlinePlayerColor) {
+        setOrientation(onlinePlayerColor);
+      }
       setMessage(onlinePlayerColor ? `Online room ready. You play ${onlinePlayerColor === "w" ? "White" : "Black"}.` : "Join the room to play.");
     }
   }, [onlinePlayerColor, onlineRoomId]);
 
   useEffect(() => {
-    if (!onlineRoomId) {
+    if (!onlineRoomId || !socketRoomId) {
       return;
     }
 
     const socket = getRoomSocket();
     const applySocketState = (room: SocketRoom) => {
-      if ((room.code || room.id).toUpperCase() !== onlineRoomId.toUpperCase()) {
+      if (normalizeRoomCode(room.code || room.id) !== socketRoomId) {
         return;
       }
 
@@ -172,13 +176,13 @@ export default function VariantChessGame({
 
     socket.on("game:state", applySocketState);
     socket.on("rooms:update", applySocketState);
-    socket.emit("game:sync", { roomId: onlineRoomId });
+    socket.emit("game:sync", { roomId: socketRoomId });
 
     return () => {
       socket.off("game:state", applySocketState);
       socket.off("rooms:update", applySocketState);
     };
-  }, [onlineRoomId]);
+  }, [onlineRoomId, socketRoomId]);
 
   useEffect(() => {
     const client = supabase;
@@ -296,6 +300,19 @@ export default function VariantChessGame({
   }, [aiOpponent, fen, gameId, result, promotion, switching, aiThinking, playerColor]);
 
   async function startGame() {
+    if (onlineRoomId) {
+      if (onlinePlayerColor && onlinePlayerColor !== "w") {
+        setOrientation(onlinePlayerColor);
+        setMessage("White starts the online game. Wait for your opponent's first move.");
+        return;
+      }
+
+      if (!onlinePlayerColor) {
+        setMessage("Join the room before starting the online board.");
+        return;
+      }
+    }
+
     const next = new Chess();
     finalizedRef.current = false;
     timerStartedRef.current = false;
@@ -307,7 +324,7 @@ export default function VariantChessGame({
     setShowResult(false);
     setAiThinking(false);
     aiFenRef.current = null;
-    setOrientation("w");
+    setOrientation(onlinePlayerColor || "w");
     setSwitchCountdown(randomSwitchCountdown());
     setSwitching(0);
     setSwitchControl("w");
@@ -322,26 +339,18 @@ export default function VariantChessGame({
     setMessage(`${modeCopy[mode].title} started. ${mode === "team" ? "White Team Player 1 to move." : aiOpponent ? "You play White, AI replies automatically." : "White to move."}`);
 
     if (onlineRoomId) {
-      if (onlinePlayerColor && onlinePlayerColor !== "w") {
-        setMessage("Only the room creator playing White can restart the online board.");
-        return;
-      }
-
-      if (!onlinePlayerColor) {
-        setMessage("Join the room before starting the online board.");
-        return;
-      }
-
       setGameId(`online-${onlineRoomId}`);
-      setMessage(`${modeCopy[mode].title} online room started. White to move.`);
-      getRoomSocket().emit("game:move", {
-        roomId: onlineRoomId,
-        fen: next.fen(),
-        movesPgn: "",
-        movesSan: "",
-        result: null,
-        status: "playing",
-      });
+      setMessage(`Online ${modeCopy[mode].title.toLowerCase()} started. White to move.`);
+      if (socketRoomId) {
+        getRoomSocket().emit("game:move", {
+          roomId: socketRoomId,
+          fen: next.fen(),
+          movesPgn: "",
+          movesSan: "",
+          result: null,
+          status: "playing",
+        });
+      }
       if (supabase) {
         await supabase
           .from("game_rooms")
@@ -481,11 +490,17 @@ export default function VariantChessGame({
           setSwitching((value) => {
             if (value <= 1) {
               window.clearInterval(countdown);
-              setOrientation(nextTurn);
+              if (!onlineRoomId) {
+                setOrientation(nextTurn);
+              }
               setSwitchControl(nextTurn);
               setTotalSwaps((current) => current + 1);
               setSwitchCountdown(randomSwitchCountdown());
-              setMessage(`Sides swapped. You now play ${nextTurn === "w" ? "White" : "Black"}.`);
+              setMessage(
+                onlineRoomId && onlinePlayerColor
+                  ? `Switch event resolved. You still play ${onlinePlayerColor === "w" ? "White" : "Black"}.`
+                  : `Sides swapped. You now play ${nextTurn === "w" ? "White" : "Black"}.`,
+              );
               return 0;
             }
 
@@ -495,7 +510,7 @@ export default function VariantChessGame({
         }, 700);
         nextMessage = `Switch countdown started. ${nextTurn === "w" ? "White" : "Black"} will control the next move.`;
       }
-    } else if (mode === "local") {
+    } else if (mode === "local" && !onlineRoomId) {
       setOrientation(nextTurn);
     }
 
@@ -548,14 +563,16 @@ export default function VariantChessGame({
     }
 
     if (onlineRoomId) {
-      getRoomSocket().emit("game:move", {
-        roomId: onlineRoomId,
-        fen: nextGame.fen(),
-        movesPgn: nextGame.pgn(),
-        movesSan: nextHistory.map((move) => move.san).join(" "),
-        status: status === "finished" ? "finished" : "playing",
-        result: outcome || null,
-      });
+      if (socketRoomId) {
+        getRoomSocket().emit("game:move", {
+          roomId: socketRoomId,
+          fen: nextGame.fen(),
+          movesPgn: nextGame.pgn(),
+          movesSan: nextHistory.map((move) => move.san).join(" "),
+          status: status === "finished" ? "finished" : "playing",
+          result: outcome || null,
+        });
+      }
 
       if (!supabase) {
         return;
@@ -651,8 +668,14 @@ export default function VariantChessGame({
     }
   }
 
-  const copy = modeCopy[mode];
+  const copy = onlineRoomId
+    ? {
+        title: "Online Multiplayer",
+        subtitle: onlinePlayerColor ? `You play ${onlinePlayerColor === "w" ? "White" : "Black"} in this realtime room.` : "Join the room to take a side.",
+      }
+    : modeCopy[mode];
   const isTeamMode = mode === "team";
+  const canStartOnlineRoom = !onlineRoomId || onlinePlayerColor === "w";
 
   return (
     <section className={`grid gap-5 ${isTeamMode ? "2xl:grid-cols-[minmax(0,900px)_360px]" : "xl:grid-cols-[minmax(320px,760px)_360px]"}`}>
@@ -687,9 +710,15 @@ export default function VariantChessGame({
                   {teamSeatTitle(teamSeat)}
                 </span>
               )}
-              <button onClick={startGame} className="cm-button px-4 py-2 text-sm font-black">
-                Start
-              </button>
+              {canStartOnlineRoom ? (
+                <button onClick={startGame} className="cm-button px-4 py-2 text-sm font-black">
+                  Start
+                </button>
+              ) : (
+                <span className="rounded-md border border-white/10 bg-white/5 px-4 py-2 text-sm font-black text-white/62">
+                  Waiting for White
+                </span>
+              )}
               {gameStatus === "playing" || gameStatus === "check" ? (
                 <button onClick={backHomeDuringGame} className="rounded-md border border-red-400/35 px-4 py-2 text-sm font-black text-red-200 hover:bg-red-400/10">
                   Back Home

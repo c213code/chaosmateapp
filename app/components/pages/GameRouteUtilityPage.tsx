@@ -61,6 +61,7 @@ const coinPacks = [
 ];
 
 const proPlans = [
+  { name: "TESTER", price: "Free", icon: "♙", body: "Development subscription to unlock and test Pro mode gates without payment.", free: true },
   { name: "VIP", price: "$4.99/month", icon: "♙", body: "Extra board themes, profile badge and saved history boost." },
   { name: "PLUS", price: "$6.99/month", icon: "♘", body: "More AI hints, faster matchmaking and advanced stats." },
   { name: "PREMIUM", price: "$9.99/month", icon: "♕", body: "Unlimited analysis, opening explorer and bonus coins.", popular: true },
@@ -77,7 +78,8 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
   const [inventory, setInventory] = useState<InventoryState | null>(null);
   const [gameHistory, setGameHistory] = useState<GameHistoryRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(view === "profile");
-  const [coachText, setCoachText] = useState("");
+  const [coachByGame, setCoachByGame] = useState<Record<string, string>>({});
+  const [analyzingGameId, setAnalyzingGameId] = useState<string | null>(null);
 
   useEffect(() => {
     if (view !== "leaderboard" || !supabase) {
@@ -231,6 +233,27 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
     );
   }
 
+  function activateFreeSubscription() {
+    if (!profile) {
+      return;
+    }
+
+    const current = inventory || loadInventory(profile.id);
+    updateInventory({ ...current, hasPass: true });
+    setShopMessage("Free tester subscription activated. Pro mode locks are now open for testing.");
+  }
+
+  function analyzeHistoryGame(game: GameHistoryRow) {
+    setAnalyzingGameId(game.id);
+    window.setTimeout(() => {
+      setCoachByGame((current) => ({
+        ...current,
+        [game.id]: aiCoach(game.moves_san || game.moves_pgn || ""),
+      }));
+      setAnalyzingGameId(null);
+    }, 360);
+  }
+
   async function claimEloReward() {
     if (!profile || !inventory || inventory.elo1300Claimed) {
       return;
@@ -316,21 +339,32 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                 {historyLoading ? (
                   <HistorySkeleton />
                 ) : gameHistory.length ? gameHistory.map((game) => (
-                  <div key={game.id} className="grid gap-3 rounded-xl border border-white/10 bg-white/8 p-4 md:grid-cols-[1fr_120px_150px] md:items-center">
-                    <div>
-                      <p className="font-black">{game.mode.replace(/_/g, " ").toUpperCase()}</p>
-                      <p className="mt-1 line-clamp-1 font-mono text-xs text-white/45">{game.moves_san || "No moves saved yet"}</p>
+                  <div key={game.id} className="rounded-xl border border-white/10 bg-white/8 p-4">
+                    <div className="grid gap-3 md:grid-cols-[1fr_120px_170px] md:items-center">
+                      <div>
+                        <p className="font-black">{game.mode.replace(/_/g, " ").toUpperCase()}</p>
+                        <p className="mt-1 line-clamp-1 font-mono text-xs text-white/45">{game.moves_san || "No moves saved yet"}</p>
+                      </div>
+                      <span className="rounded-md border border-white/10 bg-black/20 px-3 py-2 text-center text-sm font-bold text-white/70">{game.result || "active"}</span>
+                      <button
+                        onClick={() => analyzeHistoryGame(game)}
+                        disabled={analyzingGameId === game.id}
+                        className="rounded-md border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-2 text-sm font-black text-[#f7d96b] disabled:opacity-60"
+                      >
+                        {analyzingGameId === game.id ? "Analyzing..." : coachByGame[game.id] ? "Refresh analysis" : "Analyze with AI Coach"}
+                      </button>
                     </div>
-                    <span className="rounded-md border border-white/10 bg-black/20 px-3 py-2 text-center text-sm font-bold text-white/70">{game.result || "active"}</span>
-                    <button onClick={() => setCoachText(aiCoach(game.moves_san || game.moves_pgn || ""))} className="rounded-md border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-2 text-sm font-black text-[#f7d96b]">
-                      Analyze with AI Coach
-                    </button>
+                    {coachByGame[game.id] && (
+                      <div className="mt-4 rounded-lg border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm leading-6 text-cyan-50">
+                        <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-cyan-200">AI Coach result</p>
+                        {coachByGame[game.id]}
+                      </div>
+                    )}
                   </div>
                 )) : (
                   <p className="rounded-xl border border-white/10 bg-white/8 p-4 text-white/55">No saved games yet.</p>
                 )}
               </div>
-              {coachText && <div className="mt-5 rounded-xl border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm leading-6 text-cyan-50">{coachText}</div>}
             </div>
           </section>
         )}
@@ -409,8 +443,12 @@ export default function GameRouteUtilityPage({ view }: { view: "profile" | "lead
                     <h3 className="mt-7 text-3xl font-black uppercase text-white">{plan.name}</h3>
                     <p className="mt-2 text-lg font-black text-[#b8ff38]">{plan.price}</p>
                     <p className="mt-2 min-h-16 text-sm leading-6 text-white/58">{plan.body}</p>
-                    <button onClick={() => checkout(`pro-${plan.name.toLowerCase()}`)} className="mt-4 w-full rounded-xl bg-[#b8ff38] px-4 py-3 font-black text-black hover:brightness-105">
-                      Start FREE Trial
+                    <button
+                      onClick={() => ("free" in plan && plan.free ? activateFreeSubscription() : checkout(`pro-${plan.name.toLowerCase()}`))}
+                      disabled={"free" in plan && plan.free && Boolean(inventory?.hasPass)}
+                      className="mt-4 w-full rounded-xl bg-[#b8ff38] px-4 py-3 font-black text-black hover:brightness-105 disabled:opacity-45"
+                    >
+                      {"free" in plan && plan.free ? (inventory?.hasPass ? "Activated" : "Activate Free") : "Start FREE Trial"}
                     </button>
                   </div>
                 ))}
@@ -701,8 +739,8 @@ function LeaderboardSkeleton() {
 
 function aiCoach(moves: string) {
   const tokens = moves.split(/\s+/).filter(Boolean);
-  if (!tokens.length) {
-    return "AI Coach: Недостаточно ходов для анализа. Сыграй партию хотя бы на несколько ходов.";
+  if (tokens.length < 4) {
+    return "Coach summary: this game is too short for a deep review. Play at least 4 half-moves so the coach can evaluate opening choices, king safety, captures, and missed chances.";
   }
 
   const queenMovedEarly = tokens.slice(0, 8).some((move) => move.includes("Q"));
@@ -710,12 +748,12 @@ function aiCoach(moves: string) {
   const captures = tokens.filter((move) => move.includes("x")).length;
   const castled = tokens.some((move) => move.includes("O-O"));
   const mistakes = [
-    queenMovedEarly ? "Ферзь вышел слишком рано: соперник может выиграть темп атакой на ферзя." : "Ранний дебют выглядит спокойно: ферзь не был выведен слишком рано.",
-    castled ? "Король был уведён в безопасность рокировкой." : "Главная ошибка: король долго оставался в центре. Часто лучше рокироваться раньше.",
-    captures > tokens.length / 3 ? "Много разменов: проверь, не отдавал ли ты активные фигуры без выгоды." : "Разменов немного, позиционное напряжение сохранялось.",
+    queenMovedEarly ? "Your queen came out early, which can lose tempo if the opponent attacks it." : "Opening looked stable: the queen was not rushed out too early.",
+    castled ? "Good king safety: castling was completed." : "Main improvement: castle earlier so the king does not stay in the center.",
+    captures > tokens.length / 3 ? "Many captures happened. Check whether active pieces were traded without a clear benefit." : "Few captures: you kept useful tension in the position.",
   ];
 
-  return `AI Coach: сыграно ${tokens.length} half-moves. Checks: ${checks}, captures: ${captures}. Top feedback: ${mistakes.join(" ")}`;
+  return `Coach summary: ${tokens.length} half-moves analyzed. Checks: ${checks}. Captures: ${captures}. ${mistakes.join(" ")}`;
 }
 
 function Stat({ label, value }: { label: string; value: number }) {

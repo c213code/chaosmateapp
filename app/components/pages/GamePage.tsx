@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { leaderboard } from "@/app/lib/chess-platform";
+import { loadInventory } from "@/app/lib/progression";
 import { signOut } from "@/app/lib/supabase";
 import type { ChaosMateUser, Profile } from "@/app/lib/types";
 import ThemeToggle from "@/app/components/ThemeToggle";
@@ -63,7 +65,35 @@ const modes = [
   },
 ];
 
+const proModes = [
+  {
+    title: "Blind Chess",
+    icon: "🙈",
+    description: "Memorize the board for 3 seconds, then play by typing moves from memory. Wrong moves create penalties.",
+    tags: ["Viral", "Memory", "Pro"],
+  },
+  {
+    title: "Chess Roulette",
+    icon: "🎲",
+    description: "Every 7-10 moves a wild event can hit: tornado, ghost piece, time swap, bomb, or reverse chaos.",
+    tags: ["WTF moments", "Coins", "Pro"],
+  },
+];
+
 export default function GamePage({ profile }: GamePageProps) {
+  const [hasSubscription, setHasSubscription] = useState(false);
+
+  useEffect(() => {
+    if (!profile) {
+      return;
+    }
+
+    const syncSubscription = () => setHasSubscription(loadInventory(profile.id).hasPass);
+    syncSubscription();
+    window.addEventListener("chaosmate-inventory-change", syncSubscription);
+    return () => window.removeEventListener("chaosmate-inventory-change", syncSubscription);
+  }, [profile]);
+
   async function handleLogout() {
     try {
       await signOut();
@@ -191,6 +221,23 @@ export default function GamePage({ profile }: GamePageProps) {
                 <ModeCard key={mode.href} {...mode} />
               ))}
             </div>
+
+            <div className="mt-8">
+              <div className="mb-4 flex items-end justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-black uppercase tracking-[0.12em]">Viral Pro Modes</h2>
+                  <p className="mt-1 text-sm text-white/45">Blind Chess and Chess Roulette require an active subscription.</p>
+                </div>
+                <a href="/shop" className="rounded-md border border-[#d4af37]/35 bg-[#d4af37]/10 px-3 py-2 text-sm font-bold text-[#f7d96b]">
+                  {hasSubscription ? "Subscription active" : "Unlock in Shop"}
+                </a>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {proModes.map((mode) => (
+                  <ProModeCard key={mode.title} {...mode} unlocked={hasSubscription} />
+                ))}
+              </div>
+            </div>
           </section>
 
           <aside className="space-y-4">
@@ -242,6 +289,33 @@ function TournamentStat({ label, value, detail }: { label: string; value: string
       <p className="mt-2 text-2xl font-black text-[#b8ff38]">{value}</p>
       <p className="mt-1 text-xs font-bold text-white/48">{detail}</p>
     </div>
+  );
+}
+
+function ProModeCard({ title, icon, description, tags, unlocked }: { title: string; icon: string; description: string; tags: string[]; unlocked: boolean }) {
+  return (
+    <a href="/shop" className="cm-card group relative block overflow-hidden p-5 transition duration-300 hover:-translate-y-1 hover:border-[#d4af37]/55">
+      <div className="absolute right-4 top-4 rounded-full border border-[#d4af37]/30 bg-[#d4af37]/10 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-[#f7d96b]">
+        {unlocked ? "Pro active" : "Locked"}
+      </div>
+      <div className="flex items-start gap-4 pr-24">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-md border border-white/10 bg-[#0f172a] text-2xl">{icon}</span>
+        <div>
+          <h3 className="text-lg font-black text-white">{title}</h3>
+          <p className="mt-2 text-sm leading-6 text-white/56">{description}</p>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {tags.map((tag) => (
+          <span key={tag} className="rounded border border-white/10 bg-black/20 px-2 py-1 text-xs text-white/48">
+            {tag}
+          </span>
+        ))}
+      </div>
+      <span className="mt-5 inline-flex text-sm font-black uppercase tracking-[0.18em] text-[#d4af37]">
+        {unlocked ? "Subscription ready" : "Requires subscription"}
+      </span>
+    </a>
   );
 }
 

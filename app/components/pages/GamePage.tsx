@@ -149,15 +149,21 @@ export default function GamePage({ profile }: GamePageProps) {
               <p className="mt-3 text-base leading-7 text-white/62">
                 When ChaosMate reaches 100 active players, we will launch weekly Friday, Saturday, and Sunday tournaments with a serious prize pool, live brackets, city rankings, coins, and exclusive champion badges.
               </p>
+              <p className="mt-3 rounded-md border border-[#4ade80]/25 bg-[#4ade80]/10 p-3 text-sm font-bold leading-6 text-[#bbf7d0]">
+                Invite a friend to ChaosMate and get 1 free tournament entry when the arena opens.
+              </p>
+              <p className="mt-3 rounded-md border border-[#d4af37]/30 bg-[#d4af37]/10 p-3 text-sm font-bold leading-6 text-[#f7d96b]">
+                May 19, 2026: offline super tournament with a very big prize pool. Qualification: ChaosMate ELO 2000+.
+              </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[430px]">
               <TournamentStat label="Entry" value="$2.99" detail="or 500 coins" />
               <TournamentStat label="Champion" value="$50+" detail="or 5000 coins" />
-              <TournamentStat label="Target" value="100" detail="active players" />
+              <TournamentStat label="Offline" value="May 19" detail="ELO 2000+ only" />
             </div>
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {["Realtime bracket", "Weekend finals", "Kazakhstan city leaderboard", "Founder badge"].map((item) => (
+            {["Invite friend = free entry", "Realtime bracket", "Weekend finals", "Kazakhstan city leaderboard", "Founder badge"].map((item) => (
               <span key={item} className="rounded-full border border-[#d4af37]/25 bg-[#d4af37]/10 px-3 py-2 text-xs font-bold text-[#f7d96b]">
                 {item}
               </span>
